@@ -15,7 +15,6 @@ import time
 from slaves_modbus_configuration import*
 import time
 from pymodbus.client import ModbusSerialClient
-from modbus_interface import Modbus_Interface
 
 class rs485_gui_slave():
     def __init__(self, window = None, slave_number = None):
@@ -26,11 +25,8 @@ class rs485_gui_slave():
         self.coils_list = []            # Coils = Digital outputs/writes, Eg: LED, Relays
         self.discrete_inputs_list = []  # Discrete Inputs = Digital inputs/reads, Eg: Switches
         self.holding_reg_list = []      # Holding registers = 16bit variable values, R+W
-        self.holding_reg_min_list = []
-        self.holding_reg_max_list = []
         self.input_reg_list = []        # Input_registers = 16bit variable values, R only.
-        self.row_counter = 0            # Just to keep track of the tkinter frame row for grid()
-        self.window.bind('<Return>', self.window_bind_callback )            # This gets the values entered in the gui.
+        self.row_counter = 0 # 
 
     def gen_slave_modbus_gui(self):  
         global slaves_mcfg    
@@ -41,7 +37,7 @@ class rs485_gui_slave():
         self.canvas_width = 550 
         self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
         self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= "white")        
-        self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                       
+        self.canvas.create_window( 5,5, window = self.frame, anchor=tk.NW )                       
         self.vbar = tk.Scrollbar(self.window, orient = 'vertical', command = self.canvas.yview)        
         # vbar = tk.Scrollbar(self.frame, orient = 'vertical', command = self.canvas.yview)        
 
@@ -60,11 +56,9 @@ class rs485_gui_slave():
         self.gui_dict['Label_dict']['Name'].grid(row = 0, column = 0, sticky = "w", pady = 2, columnspan = 2) 
         self.gui_dict['Label_dict']['Address'].grid(row = 1, column = 0, sticky = "w", pady = 2, columnspan = 2) 
         self.gui_dict['Label_dict']['Info'].grid(row = 2, column = 0, sticky = "w", pady = 2, columnspan = 2) 
-        self.gui_dict['Label_dict']['Board'].grid(row = 3, column = 0, sticky = "w", pady = 2, columnspan = 2)
+        self.gui_dict['Label_dict']['Board'].grid(row = 3, column = 0, sticky = "w", pady = 2, columnspan = 2) 
 
-        self.row_counter = 3
-
-        # Read upto 100 coils, digital output. Write only.        
+        # Read upto 100 coils, break when we reach the last one.        
         for coil_num in range(0, 100):
             # self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = "white", wraplength = 200)
             # self.gui_dict['Label_dict']['Coil_' + str(coil_num)].grid(row = 4 + coil_num, column = 0, sticky = "w", pady = 2, columnspan = 2)
@@ -72,108 +66,75 @@ class rs485_gui_slave():
             # If the slave_dict has the Nth coil we create and place a check button on the frame, else, we break out of the for loop.
             # if the key "slave_N_Coil_M" exists in the slaves_mcfg.dict
             if "slave_" + str(self.slave_number) + "_Coil_" + str(coil_num) in slaves_mcfg.dict:
-                self.row_counter = self.row_counter + 1
                 self.coils_list.append(0)        
-
-                self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = "white", wraplength = 200)
-                self.gui_dict['Label_dict']['Coil_' + str(coil_num)].grid(row = 4 + coil_num, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Create and place check buttons
                 self.gui_dict['Check_dict']['Coil_' + str(coil_num) + "_var"] = tk.IntVar()
                 self.gui_dict['Check_dict']['Coil_' + str(coil_num)] = tk.Checkbutton(self.frame, 
-                                                                                            text = "",
+                                                                                            text = "Coil " + str(coil_num) + " (" + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)] + ")",
                                                                                             variable = self.gui_dict['Check_dict']['Coil_' + str(coil_num) + "_var"], 
                                                                                             onvalue = 1, 
                                                                                             offvalue = 0, 
-                                                                                            command = lambda clicked_checkbutton = coil_num : self.update_coils(clicked_checkbutton))                
+                                                                                            command = self.on_coil_button)
 
-                self.gui_dict['Check_dict']['Coil_' + str(coil_num)].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                                      
+                self.gui_dict['Check_dict']['Coil_' + str(coil_num)].grid(row = 4 + coil_num, column = 0, sticky = "w", pady = 2, columnspan = 2)                                      
             else:
                 print("No more coils !")
                 break
 
-        # Discrete Inputs. Read upto 100 discrete/digital inputs. Read only
+        # Discrete Inputs. Read upto 100 discrete inputs
         for discrete_inputs_num in range(0,100):
             if "slave_" + str(self.slave_number) + "_Discrete_input_" + str(discrete_inputs_num) in slaves_mcfg.dict:  
-                self.row_counter = self.row_counter + 1
-
                 self.discrete_inputs_list.append(0)
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num)] = Label(self.frame, 
                                                                                                     text = "Discrete input " + str(discrete_inputs_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Discrete_input_" + str(discrete_inputs_num)], 
                                                                                                     bg = "white", wraplength = self.canvas_width - 10)
-                self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num)].grid(row = self.row_counter, column = 0, sticky = "w", pady = 2, columnspan = 2)
+                self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num)].grid(row = 4 + coil_num + discrete_inputs_num * 2 + 1, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
-                # Add ON/OFF labels to show status of the discrete inputs.
-                self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"] = Label(self.frame, 
-                                                                                                    text = "OFF", 
-                                                                                                    bg = "white", fg="orange" , wraplength = self.canvas_width - 10)
-                self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                
-
-        # Holding registers, read upto 100 holding registers. Read + Write.
+        # Holding registers, read upto 100 holding registers
         for holding_reg_num in range(0, 100):
             # # If the slave_dict has the Nth holding_register we create and place a check button on the frame, else, we break out of the for loop.
             if "slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num) in slaves_mcfg.dict:  
-                self.row_counter = self.row_counter + 1
-
                 self.holding_reg_list.append(0)
-
-                # Update holding registers with min and max allowed values
-                value = slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
-                splits = value.split(":")
-                # print("splits = ", splits)
-                self.holding_reg_min_list.append(float(splits[1]))
-                self.holding_reg_max_list.append(float(splits[2]))
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num)] = Label(self.frame, 
                                                                                                     text = "Holding_register " + str(holding_reg_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)], 
                                                                                                     bg = "white", wraplength = self.canvas_width - 10)
-                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num)].grid(row = self.row_counter + holding_reg_num * 2, column = 0, sticky = "w", pady = 2, columnspan = 2)
+                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num)].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + 1, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Display current value
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"] = Label(self.frame, 
-                                                                                                    text = "current value = ", 
+                                                                                                    text = "current value = " + str(100), 
                                                                                                     bg = "white", wraplength = self.canvas_width - 10)
 
-                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].grid(row = self.row_counter + holding_reg_num * 2 + 1, column = 1, sticky = "e", pady = 2, columnspan = 1)
-               
-                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"] = Label(self.frame, 
-                                                                                                    text = str(self.holding_reg_list[holding_reg_num]), 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + 2, column = 0, sticky = "e", pady = 2, columnspan = 1)
 
-                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].grid(row = self.row_counter + holding_reg_num * 2 + 1, column = 2, sticky = "w", pady = 2, columnspan = 1)
+                
 
                 # # Display the target value.
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_target"] = Label(self.frame, 
                                                                                                     text = "target value = ", 
                                                                                                     bg = "white", wraplength = self.canvas_width - 10)
 
-                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = self.row_counter + holding_reg_num * 2 + 2, column = 1, sticky = "e", pady = 2, columnspan = 1)
+                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + 2, column = 2, sticky = "w", pady = 2, columnspan = 1)
                 
-                # # Create Entry box and place it.
+                # Create Entry box and place it.
                 self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"] = tk.StringVar()
                 self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target"] = Entry(self.frame, 
-                                                                                                            textvariable = self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"],                                                                                                           
-                                                                                                            border=1, width=10)
-                # self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"].trace_add(mode = "write", callback = self.update_holding_reg)                                                                                                            
-
-                self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = self.row_counter + holding_reg_num * 2 + 2, column = 2, sticky = "w", pady = 2, columnspan = 1)                                                                                                          
+                                                                                                                    textvariable = self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"],
+                                                                                                                    border=1, width=10)
+                self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + 2, column = 3, sticky = "e", pady = 2, columnspan = 1)                                                                                                          
             else:
                 print("No more holding_registers !")
                 break
 
-        self.row_counter = self.row_counter + holding_reg_num * 2 + 2
-        print("Holding register min list ", self.holding_reg_min_list)
-        print("Holding register max list ", self.holding_reg_max_list)
-
-        # # Input registers, read upto 100 Input registers. Read only
+        # # Input registers, read upto 100 Input registers
         for input_reg_num in range(0, 100):
             # # If the slave_dict has the Nth input_register we create and place a check button on the frame, else, we break out of the for loop.
             if "slave_" + str(self.slave_number) + "_Input_register_" + str(input_reg_num) in slaves_mcfg.dict:  
-                self.row_counter = self.row_counter + 1
-
                 self.input_reg_list.append(0)
 
                 # Display what is in the XLSX sheet
@@ -181,61 +142,40 @@ class rs485_gui_slave():
                                                                                                     text = "Input_register " + str(input_reg_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Input_register_" + str(input_reg_num)] + "  ,", 
                                                                                                     bg = "white", wraplength = self.canvas_width - 10)
 
-                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)].grid(row = self.row_counter, column = 0, sticky = "w", pady = 2, columnspan = 2)
+                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + 2 + input_reg_num, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Display current value
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"] = Label(self.frame, 
-                                                                                                    text = "current value = ", 
+                                                                                                    text = "current value = " + str(100), 
                                                                                                     bg = "white", wraplength = self.canvas_width - 10)
 
-                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].grid(row = self.row_counter, column = 1, sticky = "e", pady = 2, columnspan = 1)
+                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + 2 + input_reg_num, column = 2, sticky = "e", pady = 2, columnspan = 1)
 
-                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"] = Label(self.frame, 
-                                                                                                    text = str(self.input_reg_list[input_reg_num]), 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
-
-                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 1)
-
+    
             else:
                 print("No more input_registers !")
                 break
 
+
+
+
         # # Place the vertical bar        
         # vbar.grid(row=0, column = 1, sticky="ns", columnspan=1, rowspan=1)
 
-    def update_coils(self, clicked_checkbutton):        
-        value = self.gui_dict['Check_dict']['Coil_' + str(clicked_checkbutton) + "_var"].get()
-        self.coils_list[clicked_checkbutton] = value        # Update the coil_list
-        print("Pressed slave " + str(self.slave_number) + " Coil " + str(clicked_checkbutton) + " value = " + str(value)) 
-        print("Coil list ", self.coils_list)
-
-    def window_bind_callback(self, *args):
-        # print("Enter was pressed")
-        # Update the holding registers with values from the GUI.
-        print("\nUpdating holding registers for Slave ", self.slave_number)
-        for holding_reg_num in range(0, len(self.holding_reg_list)):
-
-            user_entry = copy.deepcopy(self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"].get())       # class str
-            # print("user_entry = ", user_entry, type(user_entry), float(user_entry))  
-
-            # Try to convert the user's input to floats, if invalid we return
-            try:
-                user_entry = copy.deepcopy(float(user_entry))
-                # Sanity check: validity of the user's entry such as limits, floats, ints...etc                
-                value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
-                print("Thresholded value ", value)
-                
-                self.holding_reg_list[holding_reg_num] = float(value)
-                print("Inputting ", value , " to holding register")                        
-                print("Updated holding register = ", self.holding_reg_list) 
-            except:
-                print("Invalid entries to holding registers !")
-                return
+    def on_coil_button(self):
+        print("Pressed slave " + str(self.slave_number) + " Coil ???" )        
 
     def on_config_canvas(self, e ):        
         # Set the canvas scrollregion to fit the whole of frame.
         # self.canvas.configure(scrollregion=(0, 0, e.width, e.height))
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def on_mouse_wheel(self, event):
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
+
 
 def root_window_bind_callback(*args):
     print("root_window_bind_callback()", *args)           
@@ -247,9 +187,10 @@ def on_closing():
 
 root_window = None
 slaves_mcfg = None
-mi = None
 
 if __name__ == "__main__":
+    # gui = GUI()
+
     # Create the root window
     root_window = Tk()   
     root_window.title('DigiFoods - Inline Sensing')       # Set window title    
@@ -266,17 +207,18 @@ if __name__ == "__main__":
     slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves.
     slaves_mcfg.get_config()
 
-    mi = Modbus_Interface()     
-
     # Place frames for each slave.
     slave_1 = rs485_gui_slave(window = root_window, slave_number=1)
     slave_1.gen_slave_modbus_gui()
-    slave_1.canvas.grid(row = 0, column = 0,  columnspan = 2)        
-    slave_1.vbar.grid(row=0, column = 1, sticky="ns", columnspan=1, rowspan=1)  # Place the vertical bar        
+    slave_1.canvas.grid(row = 0, column = 0,  columnspan = 2)
+    
+    # Place the vertical bar        
+    slave_1.vbar.grid(row=0, column = 1, sticky="ns", columnspan=1, rowspan=1)
 
-    # slave_2 = rs485_gui_slave(window = root_window, slave_number=2)
-    # slave_2.gen_slave_modbus_gui()
-    # slave_2.canvas.grid(row = 0, column = 3, columnspan = 2)    
+    slave_2 = rs485_gui_slave(window = root_window, slave_number=2)
+    slave_2.gen_slave_modbus_gui()
+    slave_2.canvas.grid(row = 0, column = 3, columnspan = 2)
+    
     # Place the vertical bar        
     # slave_2.vbar.grid(row=0, column = 4, sticky="ns", columnspan=1, rowspan=1)    
 

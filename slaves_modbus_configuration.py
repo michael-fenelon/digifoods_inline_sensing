@@ -41,7 +41,7 @@ class Slaves_Modbus_Config():
             #   value = self.sheet_obj.cell(row = row, column = slave_num * 2).value
 
             # We iterate until maximum number of rows, but since each slave has different number of entries, we break out of the loop when we read a None from a cell.
-            for row in range(1, self.max_num_of_rows):
+            for row in range(1, self.max_num_of_rows + 1):
 
                 # If the cell is on None, we break 
                 cell_value = self.sheet_obj.cell(row = row, column = (slave_num * 2) - 1).value 
@@ -56,7 +56,7 @@ class Slaves_Modbus_Config():
 
         # print(self.dict)
 
-        print("\n Dictionary = ")
+        print("\nDictionary = ")
         for key in self.dict.keys():
             print(key, self.dict[key])
 
