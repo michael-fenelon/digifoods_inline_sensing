@@ -16,12 +16,20 @@ from slaves_modbus_configuration import*
 import time
 from pymodbus.client import ModbusSerialClient
 from modbus_interface import Modbus_Interface
+from watchpoints import watch
 
 class rs485_gui_slave():
-    def __init__(self, window = None, slave_number = None):
+    def __init__(self, window = None, slave_number = None, modbus_interface = None):
         self.window = window
+
+        # Difference between slave_number and slave_address.
+        # These values don't have to match. slave number is a user's identification of a slave. 
+        # slave_address is the address in the modbus RTU protocol  to access a slave.
+        # Eg: slave_number = 1, some device that performs a function. 
+        # Then, slave_address can be any available address, eg 1, 2, 34, 69... upto 127
         self.slave_number = slave_number
-        self.slave_variables = None
+        self.slave_address = None
+        self.mi = modbus_interface        
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Entry_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{} }
         self.coils_list = []            # Coils = Digital outputs/writes, Eg: LED, Relays
         self.discrete_inputs_list = []  # Discrete Inputs = Digital inputs/reads, Eg: Switches
@@ -30,7 +38,7 @@ class rs485_gui_slave():
         self.holding_reg_max_list = []
         self.input_reg_list = []        # Input_registers = 16bit variable values, R only.
         self.row_counter = 0            # Just to keep track of the tkinter frame row for grid()
-        self.window.bind('<Return>', self.window_bind_callback )            # This gets the values entered in the gui.
+        # self.window.bind('<Return>', self.window_bind_callback )            # This gets the values entered in the gui.
 
     def gen_slave_modbus_gui(self):  
         global slaves_mcfg    
@@ -64,6 +72,8 @@ class rs485_gui_slave():
 
         self.row_counter = 3
 
+        self.slave_address = int(slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Address"])  # Get the slave's address
+
         # Read upto 100 coils, digital output. Write only.        
         for coil_num in range(0, 100):
             # self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = "white", wraplength = 200)
@@ -84,13 +94,20 @@ class rs485_gui_slave():
                                                                                             text = "",
                                                                                             variable = self.gui_dict['Check_dict']['Coil_' + str(coil_num) + "_var"], 
                                                                                             onvalue = 1, 
-                                                                                            offvalue = 0, 
-                                                                                            command = lambda clicked_checkbutton = coil_num : self.update_coils(clicked_checkbutton))                
+                                                                                            offvalue = 0)                                                                                              
+                # self.gui_dict['Check_dict']['Coil_' + str(coil_num)] = tk.Checkbutton(self.frame, 
+                #                                                                             text = "",
+                #                                                                             variable = self.gui_dict['Check_dict']['Coil_' + str(coil_num) + "_var"], 
+                #                                                                             onvalue = 1, 
+                #                                                                             offvalue = 0, 
+                #                                                                             command = lambda clicked_coil = coil_num : self.update_coils(clicked_coil))                
 
                 self.gui_dict['Check_dict']['Coil_' + str(coil_num)].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                                      
             else:
                 print("No more coils !")
                 break
+
+        # print("coils_list ", self.coils_list)
 
         # Discrete Inputs. Read upto 100 discrete/digital inputs. Read only
         for discrete_inputs_num in range(0,100):
@@ -107,7 +124,7 @@ class rs485_gui_slave():
 
                 # Add ON/OFF labels to show status of the discrete inputs.
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"] = Label(self.frame, 
-                                                                                                    text = "OFF", 
+                                                                                                    text = "False", 
                                                                                                     bg = "white", fg="orange" , wraplength = self.canvas_width - 10)
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                
 
@@ -200,24 +217,49 @@ class rs485_gui_slave():
                 print("No more input_registers !")
                 break
 
-        # # Place the vertical bar        
-        # vbar.grid(row=0, column = 1, sticky="ns", columnspan=1, rowspan=1)
+        # Update button: Large vertical button used and command/callback to read all the holding register entries, update the holding_reg_list and send value to the slave.
+        # We use a button so that only ONE slave uses the RS485 line at a time; avoids RS485 communication conflicts between slaves.
+        self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "update", command = self.update_slave, wraplength = 50) 
+        self.gui_dict['Button_dict']['update'].grid(row = 4, column = 3, sticky = "ns", pady = 2, columnspan = 1, rowspan = self.row_counter)
 
-    def update_coils(self, clicked_checkbutton):        
-        value = self.gui_dict['Check_dict']['Coil_' + str(clicked_checkbutton) + "_var"].get()
-        self.coils_list[clicked_checkbutton] = value        # Update the coil_list
-        print("Pressed slave " + str(self.slave_number) + " Coil " + str(clicked_checkbutton) + " value = " + str(value)) 
-        print("Coil list ", self.coils_list)
+    # def update_coils(self, clicked_coil):            
+    #     value = self.gui_dict['Check_dict']['Coil_' + str(clicked_coil) + "_var"].get()
+    #     self.coils_list[clicked_coil] = value        # Update the coil_list
+    #     print("Pressed slave " + str(self.slave_number) + " Coil " + str(clicked_coil) + " value = " + str(value)) 
+    #     print("Updated Coil list ", self.coils_list, len(self.coils_list))
+    #     res = self.mi.client.write_coil(address = clicked_coil, value = value, device_id = self.slave_address)
+    #     print("Updated coil result ", res)
 
-    def window_bind_callback(self, *args):
-        # print("Enter was pressed")
-        # Update the holding registers with values from the GUI.
+    # Callback that gets all the values from the coil Checkboxes, Entry boxes and update the values in the slave
+    # does sanity check for each entry and update the holding_reg.    
+    def update_slave(self):
+        # UPDATE COILS: Write switches/status/ON/OFF to slave
+        # values are bool: True/False
+        # Get the values of all check boxes and update self.coil_list
+        print("Updating coils for Slave ", self.slave_number)
+        for i in range(0, len(self.coils_list)):
+            value = self.gui_dict['Check_dict']['Coil_' + str(i) + "_var"].get()
+            self.coils_list[i] = value        # Update the coil_list
+            print("Pressed slave " + str(self.slave_number) + " Coil " + str(i) + " value = " + str(value)) 
+        
+        print("Updated Coil list ", self.coils_list, len(self.coils_list))        
+        res = self.mi.client.write_coils(address = 0, values = copy.deepcopy(self.coils_list), device_id = self.slave_address)      # We use a copy.deepcopy() since the client appends the variable self.coil_list for some reason !!!
+        print("write_coils : ", res)
+
+        # UPDATE DISCRETE INPUTS Read switches/status/ON/OFF from slave
+        # values are bool: True/False
+        res = self.mi.client.read_discrete_inputs(address = 0, count = len(self.discrete_inputs_list), device_id = self.slave_address)
+        print("discrete inputs : ", res)
+        for i in range(0, len(self.discrete_inputs_list)):
+            self.discrete_inputs_list[i] = res.bits[i]
+            self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
+
+        # UPDATE HOLDING REGISTERS:
+        # Registers contain uint16_t values
         print("\nUpdating holding registers for Slave ", self.slave_number)
         for holding_reg_num in range(0, len(self.holding_reg_list)):
-
             user_entry = copy.deepcopy(self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"].get())       # class str
             # print("user_entry = ", user_entry, type(user_entry), float(user_entry))  
-
             # Try to convert the user's input to floats, if invalid we return
             try:
                 user_entry = copy.deepcopy(float(user_entry))
@@ -225,13 +267,23 @@ class rs485_gui_slave():
                 value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
                 print("Thresholded value ", value)
                 
-                self.holding_reg_list[holding_reg_num] = float(value)
+                self.holding_reg_list[holding_reg_num] = int(value)
                 print("Inputting ", value , " to holding register")                        
                 print("Updated holding register = ", self.holding_reg_list) 
             except:
                 print("Invalid entries to holding registers !")
-                return
+                break               
+        res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)      
+        print("write_registers : ", res)
 
+        # UPDATE INPUT REGISTERS: Read from slave and populate the GUI.
+        # Registers contain uint16_t values
+        res = self.mi.client.read_input_registers(address=0, count=2, device_id=self.slave_address)
+        print("read_input_registers : ")
+        for i in range(0,len(self.input_reg_list)):
+            self.input_reg_list[i] = res.registers[i]            
+            self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
+        
     def on_config_canvas(self, e ):        
         # Set the canvas scrollregion to fit the whole of frame.
         # self.canvas.configure(scrollregion=(0, 0, e.width, e.height))
@@ -269,10 +321,10 @@ if __name__ == "__main__":
     mi = Modbus_Interface()     
 
     # Place frames for each slave.
-    slave_1 = rs485_gui_slave(window = root_window, slave_number=1)
+    slave_1 = rs485_gui_slave(window = root_window, slave_number = 1, modbus_interface = mi)
     slave_1.gen_slave_modbus_gui()
     slave_1.canvas.grid(row = 0, column = 0,  columnspan = 2)        
-    slave_1.vbar.grid(row=0, column = 1, sticky="ns", columnspan=1, rowspan=1)  # Place the vertical bar        
+    slave_1.vbar.grid(row = 0, column = 1, sticky = "ns", columnspan = 1, rowspan = 1)  # Place the vertical bar        
 
     # slave_2 = rs485_gui_slave(window = root_window, slave_number=2)
     # slave_2.gen_slave_modbus_gui()
@@ -326,4 +378,28 @@ if __name__ == "__main__":
                 #                                                                                                     border=1, width=10)
                 # self.gui_dict['Entry_dict']['input_register_' + str(input_reg_num) + "_target"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + input_reg_num + 2, column = 4, sticky = "e", pady = 2, columnspan = 1)                                                                                                          
 
+    # Function to bind the Enter key press and values from the entry boxes in the GUI.
+    # There's no function/callback when a value is entered in the entry boxes.
+    # So, we read all the entry boxes when the Enter key is press and process the values.
+    # def window_bind_callback(self, *args):
+    #     # print("Enter was pressed")
+    #     # Update the holding registers with values from the GUI.
+    #     print("\nUpdating holding registers for Slave ", self.slave_number)
+    #     for holding_reg_num in range(0, len(self.holding_reg_list)):
 
+    #         user_entry = copy.deepcopy(self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"].get())       # class str
+    #         # print("user_entry = ", user_entry, type(user_entry), float(user_entry))  
+
+    #         # Try to convert the user's input to floats, if invalid we return
+    #         try:
+    #             user_entry = copy.deepcopy(float(user_entry))
+    #             # Sanity check: validity of the user's entry such as limits, floats, ints...etc                
+    #             value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
+    #             print("Thresholded value ", value)
+                
+    #             self.holding_reg_list[holding_reg_num] = float(value)
+    #             print("Inputting ", value , " to holding register")                        
+    #             print("Updated holding register = ", self.holding_reg_list) 
+    #         except:
+    #             print("Invalid entries to holding registers !")
+    #             return
