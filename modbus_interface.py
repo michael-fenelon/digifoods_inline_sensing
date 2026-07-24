@@ -40,10 +40,10 @@ class Modbus_Interface():
                     #     print(f"Register Values: {result.registers}")
 
                     # Write a HIGH/LOW to the coil
-                    toggle = not toggle
-                    result = self.client.write_coil(address=0, value=toggle, device_id=5)   # Just to flash an led. 
-                    # result = self.client.write_coil(address=0, value=0, device_id=5)
-                    print("Write coils : ", result)
+                    # toggle = not toggle
+                    # result = self.client.write_coil(address=0, value=toggle, device_id=5)   # Just to flash an led. 
+                    # # result = self.client.write_coil(address=0, value=0, device_id=5)
+                    # print("Write coils : ", result)
                     
                     # Write HIGH/LOW to all coils with a list
                     # result = self.client.write_coils(address=0, values=[0,0], device_id=5)     # Pass a list of bools 
@@ -56,8 +56,8 @@ class Modbus_Interface():
                     
 
                     # # Write a value to the holding register
-                    # # result = self.client.write_register(address=0, value=100, device_id=5)
-                    # print("Write register : ", result)
+                    result = self.client.write_register(address=0, value=10, device_id=10)
+                    print("Write register : ", result)
 
                     # # Write values to the holding registers with a integer list.
                     # result = self.client.write_registers(address=0, values=[100,100,0,0], device_id=5)    # Pass list of integers
