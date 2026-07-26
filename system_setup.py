@@ -295,13 +295,137 @@ class rs485_gui_slave():
         # self.canvas.configure(scrollregion=(0, 0, e.width, e.height))
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
+class SAMPLE_BYPASS():
+    def __init__(self, window  = None, data_exchange = None, slave = None, color = "white"):
+        self.window = window
+        self.data_exchange = data_exchange        
+        self.slave = slave
+        self.color = color        
+        self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Entry_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{} }
+        self.gen_sample_bypass_gui()        
+
+    def gen_sample_bypass_gui(self):
+        # Enable module
+        # Auto / debug mode : check button
+        # tare load cell: Button + Label
+        # get_weight: Buttom + Label
+        # Set/ Entry box for desired target sample volume/weight
+        # Start/ stop sample withdraw, given a flow rate/ PWM value, Pumps to run until we withdraw 150ml of sample
+        # Some progress bar to monitor the level/ weight of the sample in the bottle. 
+        # Start/ stop sample infusion into centrifuge, given a flow rate/ PWM value. 
+        # Same progress bar to denote the sample/ weight level in the bottle
+        # Get Humidity and Temperature info, lowest priority 
+
+        self.canvas_height = 500
+        self.canvas_width = 500 
+        self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
+        self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= self.color)        
+        self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                                                               
+
+        self.gui_dict['Check_dict']['enable_sample_bypass_IntVar'] = IntVar()
+        self.gui_dict['Check_dict']['enable_sample_bypass'] = Checkbutton(self.frame, 
+                                                                            text="RUN: Sample bypass",
+                                                                            variable=self.gui_dict['Check_dict']['enable_sample_bypass_IntVar'],
+                                                                            onvalue=True,
+                                                                            offvalue=False,
+                                                                            height=1, 
+                                                                            width=50,
+                                                                            command=self.sample_bypass_enable)
+
+        self.gui_dict['Radio_dict']['auto_debug_IntVar'] = StringVar(value="auto")
+        self.gui_dict['Radio_dict']['auto'] = tk.Radiobutton(self.frame, text="Auto ", variable=self.gui_dict['Radio_dict']['auto_debug_IntVar'], value="auto", height=1, width=20)
+        self.gui_dict['Radio_dict']['debug'] = tk.Radiobutton(self.frame, text="Debug", variable=self.gui_dict['Radio_dict']['auto_debug_IntVar'], value="debug", height=1, width=20)                                                                           
+        self.gui_dict['Button_dict']['sample_bypass_start'] = Button(self.frame,
+                                                                    text="Start",
+                                                                    command=self.sample_bypass_start, 
+                                                                    height=1, width = 20)
+
+        self.gui_dict['Button_dict']['tare'] = Button(self.frame, text="Tare load cell", command=self.sample_bypass_tare, height=1, width = 20)
+        self.gui_dict['Button_dict']['get_weight'] = Button(self.frame, text=" get sample weight ",  command=self.sample_bypass_get_weight, height=1, width=20)
+        self.gui_dict['Label_dict']['get_weight'] = Label(self.frame, text="### grams")
+        self.gui_dict['Label_dict']['set_weight'] = Label(self.frame, text="Set sample weight to withdraw (0 to 200 grams)", wraplength=250)
+        self.gui_dict['Entry_dict']['set_weight_DoubleVar'] = DoubleVar(value=100.0)
+        self.gui_dict['Entry_dict']['set_weight'] = Entry(self.frame, textvariable=self.gui_dict['Entry_dict']['set_weight_DoubleVar'], width=20)
+        
+        # Withdraw
+        self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'] = IntVar(value=0)
+        self.gui_dict['Check_dict']['start_stop_withdraw'] = Checkbutton(self.frame,
+                                                                        text="   WITHDRAW Sample: Start / Stop",
+                                                                        variable=self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'], 
+                                                                        onvalue=1,
+                                                                        offvalue=0,
+                                                                        command=self.sample_bypass_withdraw,
+                                                                        height=1,
+                                                                        width=50)
+        self.gui_dict['Progress_bar']['withdraw_progress'] = ttk.Progressbar(self.frame, orient='horizontal', length=400,mode="determinate")
+
+        # Infuse
+        self.gui_dict['Check_dict']['start_stop_infuse_IntVar'] = IntVar(value=0)
+        self.gui_dict['Check_dict']['start_stop_infuse'] = Checkbutton(self.frame,
+                                                                        text="   INFUSE Sample: Start / Stop",
+                                                                        variable=self.gui_dict['Check_dict']['start_stop_infuse_IntVar'], 
+                                                                        onvalue=1,
+                                                                        offvalue=0,
+                                                                        command=self.sample_bypass_infuse,
+                                                                        height=1,
+                                                                        width=50)
+        self.gui_dict['Progress_bar']['infuse_progress'] = ttk.Progressbar(self.frame, orient='horizontal', length=400,mode="determinate")
+
+        self.gui_dict['Label_dict']['humidity'] = Label(self.frame, text="Humidity (RH) ")
+        self.gui_dict['Label_dict']['humidity_value'] = Label(self.frame, text="")
+        self.gui_dict['Label_dict']['temperature'] = Label(self.frame, text="Temperature (deg C) ")
+        self.gui_dict['Label_dict']['temperature_value'] = Label(self.frame, text="")        
+
+        # Place all the widgets on the self.frame.
+        self.canvas.grid(row=0, column=0, sticky="nw", padx=5, pady=50)
+        self.gui_dict['Check_dict']['enable_sample_bypass'].grid(row = 0, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Radio_dict']['auto'].grid(row = 1, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Radio_dict']['debug'].grid(row = 2, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Button_dict']['sample_bypass_start'].grid(row = 3, column = 0, sticky = "nw", pady = 2, columnspan = 2)
+        self.gui_dict['Button_dict']['tare'].grid(row = 4, column = 0, sticky = "nw", pady = 2, columnspan = 2)
+        self.gui_dict['Button_dict']['get_weight'].grid(row = 5, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Label_dict']['get_weight'].grid(row = 5, column = 1, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Label_dict']['set_weight'].grid(row = 6, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Entry_dict']['set_weight'].grid(row = 6, column = 1, sticky = "nw", pady = 2, columnspan = 1)        
+        self.gui_dict['Check_dict']['start_stop_withdraw'].grid(row = 7, column = 0, sticky = "nw", pady = 2, columnspan = 2)
+        self.gui_dict['Progress_bar']['withdraw_progress'].grid(row = 8, column = 0, sticky = "nw", pady = 2, columnspan = 2)
+        self.gui_dict['Check_dict']['start_stop_infuse'].grid(row = 9, column = 0, sticky = "nw", pady = 2, columnspan = 2)
+        self.gui_dict['Progress_bar']['infuse_progress'].grid(row = 10, column = 0, sticky = "nw", pady = 2, columnspan = 2)
+        self.gui_dict['Label_dict']['humidity'].grid(row = 11, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Label_dict']['humidity_value'].grid(row = 11, column = 1, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Label_dict']['temperature'].grid(row = 12, column = 0, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Label_dict']['temperature_value'].grid(row = 12, column = 1, sticky = "nw", pady = 2, columnspan = 1)
+        print("Complete gen_gui()")
+
+    def sample_bypass_enable(self):
+        pass
+
+    def sample_bypass_start(self):
+        pass
+    
+    def sample_bypass_tare(self):
+        pass
+
+    def sample_bypass_get_weight(self):
+        pass        
+
+    def sample_bypass_withdraw(self):
+        pass    
+
+    def sample_bypass_infuse(self):
+        pass        
+
+### MAIN ############################################################################################################################################
 def root_window_bind_callback(*args):
     print("root_window_bind_callback()", *args)           
 
 def on_closing():
     print("destroying main window.")
     root_window.destroy()       # main
-    exit()        
+    exit()     
+
+def tab_selected(event)   :
+    pass
 
 root_window = None
 slaves_mcfg = None
@@ -311,108 +435,69 @@ if __name__ == "__main__":
     # Create the root window
     root_window = Tk()   
     root_window.title('DigiFoods - Inline Sensing')       # Set window title    
-    root_window.geometry("1600x1000")     # Set window size width x height   1350 x 750
+    window_width = 1600
+    window_height = 1000
+    root_window.geometry(str(window_width) + "x" + str(window_height))     # Set window size width x height   1600x1000
+    # root_window.geometry("1600x1000")     # Set window size width x height   
     root_window.config(background = "white")     #Set window background color  
     root_window.columnconfigure( 0, weight = 1 ) # Stretch Column 0 to fit width.
     root_window.rowconfigure( 0, weight = 1 ) # Stretch row 0 to fit height. 
     root_window.resizable(width=False, height=False)         # This makes the GUI of fixed size and prevents resizing.
+
+
+    slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves (read xlsx file)
+    slaves_mcfg.get_config()
+
+    mi = Modbus_Interface()     # Create a RS485 Modbus RTU interface with baud rate, 8N1 ...etc. 
+
+    # Notebook widget
+    notebook = ttk.Notebook(root_window)
+
+    # # Place frames for each slave.
+    # slave_1 = rs485_gui_slave(window = root_window, slave_number = 1, modbus_interface = mi, color="pale turquoise")
+    # slave_1.gen_slave_modbus_gui()
+    # slave_1.canvas.grid(row = 0, column = 0, sticky = "nw",  columnspan = 1)        
+    # slave_1.vbar.grid(row = 0, column = 1, sticky = "ns", columnspan = 1, rowspan = 1)  
+
+    # slave_2 = rs485_gui_slave(window = root_window, slave_number = 2, modbus_interface = mi, color="light goldenrod")
+    # slave_2.gen_slave_modbus_gui()
+    # slave_2.canvas.grid(row = 0, column = 2, sticky = "nw", columnspan = 1)           
+    # slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1) 
+
+    # slave_3 = rs485_gui_slave(window = root_window, slave_number = 3, modbus_interface = mi, color="white")
+    # slave_3.gen_slave_modbus_gui()
+    # slave_3.canvas.grid(row = 0, column = 4, sticky = "nw", columnspan = 1)        
+    # slave_3.vbar.grid(row = 0, column = 5, sticky="ns", columnspan = 1, rowspan=1)           
+
+    # Tab 1 : For sample extraction from the bypass with Y strainer    
+    tab_1_sample_bypass_window = ttk.Frame(notebook, border= 2, height=window_height, width=window_width, padding=1)
+    sample_bypass = SAMPLE_BYPASS(window  = root_window, data_exchange = None, slave = None)    
+
+    tab_2_sample_bypass_window = ttk.Frame(notebook, border= 2, height=window_height, width=window_width, padding=1)
+    sample_bypass_2 = SAMPLE_BYPASS(window  = root_window, data_exchange = None, slave = None)      
+
     root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui.
     root_window.lift()       # Bring window forwards
     # root_window.attributes('-topmost', True)
     root_window.protocol("WM_DELETE_WINDOW", on_closing)            # Let the window wait for any events
 
-    slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves.
-    slaves_mcfg.get_config()
 
-    mi = Modbus_Interface()     
+    s = ttk.Style()
+    s.configure('TNotebook.Tab', font=('URW Gothic L','11','bold') )        # Gothic <3 :D !
 
-    # Place frames for each slave.
-    slave_1 = rs485_gui_slave(window = root_window, slave_number = 1, modbus_interface = mi, color="pale turquoise")
-    slave_1.gen_slave_modbus_gui()
-    slave_1.canvas.grid(row = 0, column = 0, sticky = "nw",  columnspan = 1)        
-    slave_1.vbar.grid(row = 0, column = 1, sticky = "ns", columnspan = 1, rowspan = 1)  
-
-    slave_2 = rs485_gui_slave(window = root_window, slave_number = 2, modbus_interface = mi, color="light goldenrod")
-    slave_2.gen_slave_modbus_gui()
-    slave_2.canvas.grid(row = 0, column = 2, sticky = "nw", columnspan = 1)           
-    slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1) 
-
-    slave_3 = rs485_gui_slave(window = root_window, slave_number = 3, modbus_interface = mi, color="white")
-    slave_3.gen_slave_modbus_gui()
-    slave_3.canvas.grid(row = 0, column = 4, sticky = "nw", columnspan = 1)        
-    slave_3.vbar.grid(row = 0, column = 5, sticky="ns", columnspan = 1, rowspan=1)        
-
-    root_window.grid_columnconfigure((0,2,4), weight=2, uniform="column")   # This spaces the frame equally in columns
     
+
+    notebook.add(tab_1_sample_bypass_window, text='  Sample Bypass  ')    
+    notebook.add(tab_2_sample_bypass_window, text='  Sample Bypass  2')   
+
+    notebook.grid(row=0, column=0)
+
+    # notebook.pack()
+    notebook.bind("<<NotebookTabChanged>>", tab_selected)       # Bind a monitor to check if we change between Tabs.
+
+    # root_window.grid_columnconfigure((0,2,4), weight=2, uniform="column")   # This spaces the frame equally in columns    
 
     root_window.mainloop()       # Blocking function.        
 
 
 # DUMP
-
-# class GUI():
-#     def __init__(self):
-#         self.rs485_port = ""
-#         self.rs485_baud_rate = 9600
-#         self.rs485_serial_config = "8N1"
-#         self.class_variables = {}
-#         self.window = None
-#         self.slaves_mcfguration = slaves_mcfg()
-#         self.slaves_mcfguration.get_config()
-#         self.slaves = {}
-
-#         # Create N slaves based on the XLSX file
-#         for slave in range(0, self.slaves_mcfguration.max_num_of_slaves):
-#             self.slaves[str(slave)] = rs485_gui_slave() 
-
-     # # If the slave_dict has the Nth holding_register we create and place a check button on the frame, else, we break out of the for loop.
-                # if "slave_" + str(self.slave_number) + "_holding_register_" + str(holding_reg_num) in slaves_mcfg.dict:
-                #     # Create and place check buttons
-                #     self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_var"] = tk.StringVar()
-                #     self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num)] = tk.Checkbutton(self.frame, 
-                #                                                                                 text = "holding_register " + str(holding_reg_num) + " (" + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_holding_register_" + str(holding_reg_num)] + ")",
-                #                                                                                 variable = self.gui_dict['Check_dict']['holding_register_' + str(holding_reg_num) + "_var"], 
-                #                                                                                 onvalue = 1, 
-                #                                                                                 offvalue = 0, 
-                #                                                                                 command = self.on_holding_register_button)
-
-                #     self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num)].grid(row = 4 + holding_reg_num, column = 0, sticky = "w", pady = 2, columnspan = 2)            
-            # # Display the desired value.
-                # self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_target"] = Label(self.frame, 
-                #                                                                                     text = "target value = ", 
-                #                                                                                     bg = self.color, wraplength = self.canvas_width - 10)
-
-                # self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_target"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + input_reg_num + 2, column = 3, sticky = "w", pady = 2, columnspan = 1)
-                
-                # # Create Entry box and place it.
-                # self.gui_dict['Entry_dict']['input_register_' + str(input_reg_num) + "_target_StringVar"] = tk.StringVar()
-                # self.gui_dict['Entry_dict']['input_register_' + str(input_reg_num) + "_target"] = Entry(self.frame, 
-                #                                                                                                     textvariable = self.gui_dict['Entry_dict']['input_register_' + str(input_reg_num) + "_target_StringVar"],
-                #                                                                                                     border=1, width=10)
-                # self.gui_dict['Entry_dict']['input_register_' + str(input_reg_num) + "_target"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + input_reg_num + 2, column = 4, sticky = "e", pady = 2, columnspan = 1)                                                                                                          
-
-    # Function to bind the Enter key press and values from the entry boxes in the GUI.
-    # There's no function/callback when a value is entered in the entry boxes.
-    # So, we read all the entry boxes when the Enter key is press and process the values.
-    # def window_bind_callback(self, *args):
-    #     # print("Enter was pressed")
-    #     # Update the holding registers with values from the GUI.
-    #     print("\nUpdating holding registers for Slave ", self.slave_number)
-    #     for holding_reg_num in range(0, len(self.holding_reg_list)):
-
-    #         user_entry = copy.deepcopy(self.gui_dict['Entry_dict']['holding_register_' + str(holding_reg_num) + "_target_StringVar"].get())       # class str
-    #         # print("user_entry = ", user_entry, type(user_entry), float(user_entry))  
-
-    #         # Try to convert the user's input to floats, if invalid we return
-    #         try:
-    #             user_entry = copy.deepcopy(float(user_entry))
-    #             # Sanity check: validity of the user's entry such as limits, floats, ints...etc                
-    #             value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
-    #             print("Thresholded value ", value)
-                
-    #             self.holding_reg_list[holding_reg_num] = float(value)
-    #             print("Inputting ", value , " to holding register")                        
-    #             print("Updated holding register = ", self.holding_reg_list) 
-    #         except:
-    #             print("Invalid entries to holding registers !")
-    #             return
