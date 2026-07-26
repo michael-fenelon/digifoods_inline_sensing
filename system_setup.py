@@ -19,7 +19,7 @@ from modbus_interface import Modbus_Interface
 from watchpoints import watch
 
 class rs485_gui_slave():
-    def __init__(self, window = None, slave_number = None, modbus_interface = None):
+    def __init__(self, window = None, slave_number = None, modbus_interface = None, color = "white"):
         self.window = window
 
         # Difference between slave_number and slave_address.
@@ -29,7 +29,8 @@ class rs485_gui_slave():
         # Then, slave_address can be any available address, eg 1, 2, 34, 69... upto 127
         self.slave_number = slave_number
         self.slave_address = None
-        self.mi = modbus_interface        
+        self.mi = modbus_interface     
+        self.color = color   
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Entry_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{} }
         self.coils_list = []            # Coils = Digital outputs/writes, Eg: LED, Relays
         self.discrete_inputs_list = []  # Discrete Inputs = Digital inputs/reads, Eg: Switches
@@ -46,9 +47,9 @@ class rs485_gui_slave():
         # Canvas are scrollable, Frames are not.
         # So we create a Frame and put it on a canvas so that the frame and canvas become scrollable.
         self.canvas_height = 400
-        self.canvas_width = 550 
+        self.canvas_width = 500 
         self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
-        self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= "white")        
+        self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= self.color)        
         self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                       
         self.vbar = tk.Scrollbar(self.window, orient = 'vertical', command = self.canvas.yview)        
         # vbar = tk.Scrollbar(self.frame, orient = 'vertical', command = self.canvas.yview)        
@@ -59,10 +60,10 @@ class rs485_gui_slave():
         # self.frame.bind_all("<Button-5>", self.on_mouse_wheel)   # Linux down        
 
         # Definitions
-        self.gui_dict['Label_dict']['Name'] = Label(self.frame, text = "Name : " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Name"], bg = "white", wraplength = self.canvas_width - 10)
-        self.gui_dict['Label_dict']['Address'] = Label(self.frame, text = "Address : " + str(slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Address"]), bg = "white", wraplength = self.canvas_width - 10)
-        self.gui_dict['Label_dict']['Info'] = Label(self.frame, text = "Info : " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Info"], bg = "white", wraplength = self.canvas_width - 10)
-        self.gui_dict['Label_dict']['Board'] = Label(self.frame, text = "Board : " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Board"], bg = "white", wraplength = self.canvas_width - 10)
+        self.gui_dict['Label_dict']['Name'] = Label(self.frame, text = "Name : " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Name"], bg = self.color, wraplength = self.canvas_width - 10)
+        self.gui_dict['Label_dict']['Address'] = Label(self.frame, text = "Address : " + str(slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Address"]), bg = self.color, wraplength = self.canvas_width - 10)
+        self.gui_dict['Label_dict']['Info'] = Label(self.frame, text = "Info : " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Info"], bg = self.color, wraplength = self.canvas_width - 10)
+        self.gui_dict['Label_dict']['Board'] = Label(self.frame, text = "Board : " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Board"], bg = self.color, wraplength = self.canvas_width - 10)
         
         # Placement of Label widgets on the slave's canvas' frame.
         self.gui_dict['Label_dict']['Name'].grid(row = 0, column = 0, sticky = "w", pady = 2, columnspan = 2) 
@@ -76,7 +77,7 @@ class rs485_gui_slave():
 
         # Read upto 100 coils, digital output. Write only.        
         for coil_num in range(0, 100):
-            # self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = "white", wraplength = 200)
+            # self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = self.color, wraplength = 200)
             # self.gui_dict['Label_dict']['Coil_' + str(coil_num)].grid(row = 4 + coil_num, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
             # If the slave_dict has the Nth coil we create and place a check button on the frame, else, we break out of the for loop.
@@ -85,7 +86,7 @@ class rs485_gui_slave():
                 self.row_counter = self.row_counter + 1
                 self.coils_list.append(0)        
 
-                self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = "white", wraplength = 200)
+                self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = self.color, wraplength = 200)
                 self.gui_dict['Label_dict']['Coil_' + str(coil_num)].grid(row = 4 + coil_num, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Create and place check buttons
@@ -119,13 +120,13 @@ class rs485_gui_slave():
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num)] = Label(self.frame, 
                                                                                                     text = "Discrete input " + str(discrete_inputs_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Discrete_input_" + str(discrete_inputs_num)], 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num)].grid(row = self.row_counter, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Add ON/OFF labels to show status of the discrete inputs.
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"] = Label(self.frame, 
                                                                                                     text = "False", 
-                                                                                                    bg = "white", fg="orange" , wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, fg="orange" , wraplength = self.canvas_width - 10)
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                
 
         # Holding registers, read upto 100 holding registers. Read + Write.
@@ -140,32 +141,35 @@ class rs485_gui_slave():
                 value = slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
                 splits = value.split(":")
                 # print("splits = ", splits)
-                self.holding_reg_min_list.append(float(splits[1]))
-                self.holding_reg_max_list.append(float(splits[2]))
+
+                # print("Slave number ", self.slave_number)
+                if "range" in value:
+                    self.holding_reg_min_list.append(float(splits[1]))
+                    self.holding_reg_max_list.append(float(splits[2]))
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num)] = Label(self.frame, 
                                                                                                     text = "Holding_register " + str(holding_reg_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)], 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num)].grid(row = self.row_counter + holding_reg_num * 2, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Display current value
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"] = Label(self.frame, 
                                                                                                     text = "current value = ", 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].grid(row = self.row_counter + holding_reg_num * 2 + 1, column = 1, sticky = "e", pady = 2, columnspan = 1)
                
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"] = Label(self.frame, 
                                                                                                     text = str(self.holding_reg_list[holding_reg_num]), 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].grid(row = self.row_counter + holding_reg_num * 2 + 1, column = 2, sticky = "w", pady = 2, columnspan = 1)
 
                 # # Display the target value.
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_target"] = Label(self.frame, 
                                                                                                     text = "target value = ", 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = self.row_counter + holding_reg_num * 2 + 2, column = 1, sticky = "e", pady = 2, columnspan = 1)
                 
@@ -196,20 +200,20 @@ class rs485_gui_slave():
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)] = Label(self.frame, 
                                                                                                     text = "Input_register " + str(input_reg_num) + ": " + slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Input_register_" + str(input_reg_num)] + "  ,", 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)].grid(row = self.row_counter, column = 0, sticky = "w", pady = 2, columnspan = 2)
 
                 # Display current value
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"] = Label(self.frame, 
                                                                                                     text = "current value = ", 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].grid(row = self.row_counter, column = 1, sticky = "e", pady = 2, columnspan = 1)
 
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"] = Label(self.frame, 
                                                                                                     text = str(self.input_reg_list[input_reg_num]), 
-                                                                                                    bg = "white", wraplength = self.canvas_width - 10)
+                                                                                                    bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 1)
 
@@ -270,6 +274,8 @@ class rs485_gui_slave():
                 self.holding_reg_list[holding_reg_num] = int(value)
                 print("Inputting ", value , " to holding register")                        
                 print("Updated holding register = ", self.holding_reg_list) 
+
+                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))
             except:
                 print("Invalid entries to holding registers !")
                 break               
@@ -278,7 +284,7 @@ class rs485_gui_slave():
 
         # UPDATE INPUT REGISTERS: Read from slave and populate the GUI.
         # Registers contain uint16_t values
-        res = self.mi.client.read_input_registers(address=0, count=2, device_id=self.slave_address)
+        res = self.mi.client.read_input_registers(address=0, count = len(self.input_reg_list), device_id=self.slave_address)
         print("read_input_registers : ")
         for i in range(0,len(self.input_reg_list)):
             self.input_reg_list[i] = res.registers[i]            
@@ -305,14 +311,14 @@ if __name__ == "__main__":
     # Create the root window
     root_window = Tk()   
     root_window.title('DigiFoods - Inline Sensing')       # Set window title    
-    root_window.geometry("1400x1000")     # Set window size width x height   1350 x 750
+    root_window.geometry("1600x1000")     # Set window size width x height   1350 x 750
     root_window.config(background = "white")     #Set window background color  
     root_window.columnconfigure( 0, weight = 1 ) # Stretch Column 0 to fit width.
     root_window.rowconfigure( 0, weight = 1 ) # Stretch row 0 to fit height. 
     root_window.resizable(width=False, height=False)         # This makes the GUI of fixed size and prevents resizing.
     root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui.
     root_window.lift()       # Bring window forwards
-    root_window.attributes('-topmost', True)
+    # root_window.attributes('-topmost', True)
     root_window.protocol("WM_DELETE_WINDOW", on_closing)            # Let the window wait for any events
 
     slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves.
@@ -321,16 +327,23 @@ if __name__ == "__main__":
     mi = Modbus_Interface()     
 
     # Place frames for each slave.
-    slave_1 = rs485_gui_slave(window = root_window, slave_number = 1, modbus_interface = mi)
+    slave_1 = rs485_gui_slave(window = root_window, slave_number = 1, modbus_interface = mi, color="pale turquoise")
     slave_1.gen_slave_modbus_gui()
-    slave_1.canvas.grid(row = 0, column = 0,  columnspan = 2)        
-    slave_1.vbar.grid(row = 0, column = 1, sticky = "ns", columnspan = 1, rowspan = 1)  # Place the vertical bar        
+    slave_1.canvas.grid(row = 0, column = 0, sticky = "nw",  columnspan = 1)        
+    slave_1.vbar.grid(row = 0, column = 1, sticky = "ns", columnspan = 1, rowspan = 1)  
 
-    # slave_2 = rs485_gui_slave(window = root_window, slave_number=2)
-    # slave_2.gen_slave_modbus_gui()
-    # slave_2.canvas.grid(row = 0, column = 3, columnspan = 2)    
-    # Place the vertical bar        
-    # slave_2.vbar.grid(row=0, column = 4, sticky="ns", columnspan=1, rowspan=1)    
+    slave_2 = rs485_gui_slave(window = root_window, slave_number = 2, modbus_interface = mi, color="light goldenrod")
+    slave_2.gen_slave_modbus_gui()
+    slave_2.canvas.grid(row = 0, column = 2, sticky = "nw", columnspan = 1)           
+    slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1) 
+
+    slave_3 = rs485_gui_slave(window = root_window, slave_number = 3, modbus_interface = mi, color="white")
+    slave_3.gen_slave_modbus_gui()
+    slave_3.canvas.grid(row = 0, column = 4, sticky = "nw", columnspan = 1)        
+    slave_3.vbar.grid(row = 0, column = 5, sticky="ns", columnspan = 1, rowspan=1)        
+
+    root_window.grid_columnconfigure((0,2,4), weight=2, uniform="column")   # This spaces the frame equally in columns
+    
 
     root_window.mainloop()       # Blocking function.        
 
@@ -367,7 +380,7 @@ if __name__ == "__main__":
             # # Display the desired value.
                 # self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_target"] = Label(self.frame, 
                 #                                                                                     text = "target value = ", 
-                #                                                                                     bg = "white", wraplength = self.canvas_width - 10)
+                #                                                                                     bg = self.color, wraplength = self.canvas_width - 10)
 
                 # self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_target"].grid(row = 4 + coil_num + discrete_inputs_num + holding_reg_num * 2 + input_reg_num + 2, column = 3, sticky = "w", pady = 2, columnspan = 1)
                 

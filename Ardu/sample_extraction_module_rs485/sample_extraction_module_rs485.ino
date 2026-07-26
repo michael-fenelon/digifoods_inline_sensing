@@ -1,7 +1,7 @@
-// Arduino UNO ove RS485 to control:
+// Arduino UNO over RS485 to control:
 //   HX711: Load cell amplifier and measure weight of fluid in realtime. The calibration factor needs to be precomputed. see HX711_load_call.ino
 //   DHT22: Temperature and Humidity sensor over one wire.
-//   BTN8982A Infineon Motor driver to drive two unidirectional Brushed DC motors for the peristatic pumps.
+//   BTN8982A Infineon Motor driver to drive two unidirectional Brushed DC motors for the peristatic pumps and current sense.
 
 #include "Grove_Temperature_And_Humidity_Sensor.h"
 #include "HX711.h"
@@ -19,7 +19,8 @@
 #define SLAVE_ADDRESS 10
 #define SLAVE_BAUD_RATE 9600
 #define SLAVE_SERIAL_CONFIG SERIAL_8N1
-#define dePin 10   // pinsDE and RE on the MAX485 module are shorted.
+#define DE_PIN 10   // pinsDE and RE on the MAX485 module are shorted.
+#define RELAY_PIN 4
 
 // HX711 Load cell amplifier
 const int pin_LOADCELL_DOUT = 7;
@@ -45,24 +46,40 @@ float humidity = 0.0;
 float temperature = 0.0;
 
 SoftwareSerial RS485_serial(RS485_RX, RS485_TX);  // Create a serial port with the software serial pins.
-ModbusRTUSlave modbus(RS485_serial, dePin);       // Create a modbus object that uses the software serial port.
+ModbusRTUSlave modbus(RS485_serial, DE_PIN);       // Create a modbus object that uses the software serial port.
 
-// Coils = Digital outputs/writes, Eg: LED, Relays
-const uint8_t num_coils = 4;                        // Number of digital outputs, W only
-bool array_coils[num_coils] = {0, 0};                             // array holding all the digital outputs, W only
+//  Coils = Digital outputs/writes, Eg: LED, Relays
+//  Coil_0  Enable module/ Emergency Power OFF
+//  Coil_1  Enable Humidity & Temperature sensor
+//  Coil_2  Enable load cell sensor
+//  Coil_3  Enable pump 1
+//  Coil_4  Enable pump 2
+const uint8_t num_coils = 5;                        // Number of digital outputs, W only
+bool array_coils[num_coils] = {0, 0, 0, 0, 0};                         // array holding all the digital outputs, W only
 
 // Discrete Inputs = Digital inputs/reads, Eg: Switches
+//  Discrete_input_0  Humidity & Temperature sensor error
+//  Discrete_input_1  NA
 const uint8_t num_discrete_inputs = 2;              // Number of digital inputs, R only
 bool array_discrete_inputs[num_discrete_inputs] = {false, false};
 
-// Holding registers = 16bit variable values, R+W
+//  Holding registers = 16bit variable values, R+W
+//  Holding_register_0  Set pump 1 flow rate, range:0:100
+//  Holding_register_1  Set pump 2 flow rate, range:0:100
+//  Holding_register_2  NA
+//  Holding_register_3  NA
 const uint8_t num_holding_registers = 4;            // Number of holding registers, R + W
 uint16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array holding N holding registers. R+W
 // The brakes are NOT ON/OFF but are from 0 to 400, so we use a holding register to implement brakes
 
-// Input_registers = 16bit variable values, R only.
-const uint8_t num_input_registers = 2;              // Number of input registers, R only
-uint16_t array_input_registers[num_input_registers];      // Array for input registers, R only.
+//  Input_registers = 16bit variable values, R only.
+//  Input_register_0  Humidity (RH)
+//  Input_register_1  Temperature (deg C)
+//  Input_register_2  Weight (grams)
+//  Input_register_3  Motor 1 current sense (mA)
+//  Input_register_4  Motor 2 current sense (mA)
+const uint8_t num_input_registers = 5;              // Number of input registers, R only
+uint16_t array_input_registers[num_input_registers] = {0, 0, 0, 0, 0};  // Array for input registers, R only.
 
 void setup()
 {
@@ -89,9 +106,15 @@ void setup()
   pinMode(pin_BTN_INH_2, OUTPUT);
   digitalWrite(pin_BTN_INH_1, HIGH);  // Enable Half bridge-1
   digitalWrite(pin_BTN_INH_2, HIGH);  // Enable Half bridge-2
+
+  pinMode(A0, INPUT); // Current sense for Half bridge-1 on pin A0
+  pinMode(A1, INPUT); // Current sense for Half bridge-2 on pin A1
   Serial.println("Initalised Motor Driver BTN8982A");
 
-  // // DHT22
+  // A GPIO that drives a relay module ON/OFF
+  pinMode(RELAY_PIN, OUTPUT);
+
+  // DHT22
   Wire.begin();
   dht.begin();
   Serial.println("Initalised DHT22");
@@ -103,44 +126,13 @@ void loop()
 {
   bool a = modbus.poll();
 
-  //get_temp_hum();
-  //get_weight();
+  get_temp_hum();
 
-  //set_motor_1(0);
+  get_weight();
 
-  set_motor_2(array_holding_registers[0]);
+  set_motor_1(array_holding_registers[0]);
 
-  //  // We need to call set##Speed() before set##Brake() to avoid a glitch.
-  //  // Glitch: if we call set##Brake() before set##Speed() the motors still move a bit/or jerk even if the brake is enable.
-  //  // This is weird, this is eliminated when we call set##Speed() before set##Brake().
-  //
-  //  // Update holding registers with client's values
-  //  // Set motor speeds
-  //  md.setM1Speed(array_holding_registers[0]);
-  //  md.setM2Speed(array_holding_registers[1]);
-  //
-  //  // Update coils from client
-  //  // Set/Enable/Disable brake
-  //  if (array_coils[0] == 1)
-  //    md.setM1Brake(array_holding_registers[2]);
-  //
-  //  if (array_coils[1] == 1)
-  //    md.setM2Brake(array_holding_registers[3]);
-  //
-  //  // Update discrete inputs/ switches/ status of slave
-  //  // Get faults if any
-  //  array_discrete_inputs[0] = md.getM1Fault();
-  //  array_discrete_inputs[1] = md.getM2Fault();
-  //
-  //
-  //
-  //  // Update input registers for client to read
-  //  // Get current draw from motors.
-  //  array_input_registers[0] = md.getM1CurrentMilliamps();
-  //  array_input_registers[1] = md.getM2CurrentMilliamps();
-  //
-  //  //  Serial.println(array_holding_registers[0]);
-
+  set_motor_2(array_holding_registers[1]);
 }
 
 
@@ -148,32 +140,83 @@ void loop()
 // Reading temperature or humidity takes about 250 milliseconds!
 // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
 void get_temp_hum() {
-  if (!dht.readTempAndHumidity(temp_hum_val)) {
-    Serial.print("Humidity: ");
-    humidity = temp_hum_val[0];
-    Serial.print(humidity);
-    Serial.print(" %\t");
-    Serial.print("Temperature: ");
-    temperature = temp_hum_val[1];
-    Serial.print(temperature);
-    Serial.println(" *C");
-  } else {
-    Serial.println("Failed to get temprature and humidity value.");
+
+  // if Coil_1 : Get DHT22 (Humidity & Temperature)
+  if (array_coils[1] == 1)
+  {
+    if (!dht.readTempAndHumidity(temp_hum_val))
+    {
+      Serial.print("Humidity: ");
+      array_input_registers[0] = temp_hum_val[0];
+      humidity = temp_hum_val[0];
+      Serial.print(humidity);
+      Serial.print(" %\t");
+      Serial.print("Temperature: ");
+
+      array_input_registers[1] = temp_hum_val[1];
+      temperature = temp_hum_val[1];
+      Serial.print(temperature);
+      Serial.println(" *C");
+      array_discrete_inputs[0] = 0;   // No error in obtaining Humidity and temperature, sensor OK
+    }
+    else
+    {
+      array_discrete_inputs[0] = 1;   // Error in obtaining Humidity and temperature, sensor NOT OK
+      Serial.println("Failed to get temprature and humidity value.");
+    }
   }
 }
 
-void get_weight() {
+void get_weight()
+{
   weight = scale.get_units(5);  // Get average of 5 values
   Serial.print("Weight (units) = ");
   Serial.println(weight, 1);
+
+  array_input_registers[2] = weight;
 }
 
-// Withdraw
-void set_motor_1(int value) {
-  analogWrite(pin_BTN_IN_1, value);
+
+void set_motor_1(int value)
+{
+  if (array_coils[3] == 1)
+  {
+    analogWrite(pin_BTN_IN_1, value);
+    array_input_registers[3] = analogRead(A0);    // Current sense
+  }
+  else
+  {
+    analogWrite(pin_BTN_IN_1, 0);
+    array_input_registers[3] = analogRead(A0);    // Current sense
+  }
+
+  Serial.print("Current sense motor 1 = ");
+  Serial.println(array_input_registers[3]);  
 }
 
 // Infuse
-void set_motor_2(int value) {
-  analogWrite(pin_BTN_IN_2, value);
+void set_motor_2(int value)
+{
+  if (array_coils[4] == 1)
+  {
+    analogWrite(pin_BTN_IN_2, value);
+    array_input_registers[4] = analogRead(A1);    // Current sense
+  }
+  else
+  {
+    analogWrite(pin_BTN_IN_2, 0);
+    array_input_registers[4] = analogRead(A1);    // Current sense
+
+  }
+  Serial.print("Current sense motor 2 = ");
+  Serial.println(array_input_registers[4]);
+}
+
+// Enable the entire module by powering ON/OFF using a relay.
+void enable_module()
+{
+  if (array_coils[0] == 1)
+    digitalWrite(RELAY_PIN, HIGH );
+  else if (array_coils[0] == 0)
+    digitalWrite(RELAY_PIN, LOW );
 }

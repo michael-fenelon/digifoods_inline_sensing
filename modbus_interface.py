@@ -24,6 +24,7 @@ class Modbus_Interface():
         if self.connection:
             print("Serial port connected. Starting polling...")
             toggle = True
+            device_id = 10
             try:
                 while True:
                     print("\n")
@@ -31,7 +32,7 @@ class Modbus_Interface():
                     # address=0 is the starting register
                     # count=10 is the number of registers to read
                     # slave=1 is the target device ID
-                    # result = self.client.read_holding_registers(address=0, count=1, device_id=5)            
+                    # result = self.client.read_holding_registers(address=0, count=1, device_id = device_id)            
                     
                     # 4. Check for errors and print data
                     # if result.isError():
@@ -41,31 +42,31 @@ class Modbus_Interface():
 
                     # Write a HIGH/LOW to the coil
                     # toggle = not toggle
-                    # result = self.client.write_coil(address=0, value=toggle, device_id=5)   # Just to flash an led. 
-                    # # result = self.client.write_coil(address=0, value=0, device_id=5)
+                    # result = self.client.write_coil(address=0, value=toggle, device_id = device_id)   # Just to flash an led. 
+                    # # result = self.client.write_coil(address=0, value=0, device_id = device_id)
                     # print("Write coils : ", result)
                     
                     # Write HIGH/LOW to all coils with a list
-                    # result = self.client.write_coils(address=0, values=[0,0], device_id=5)     # Pass a list of bools 
-                    # print("Write coils : ", result)
+                    result = self.client.write_coils(address=0, values=[1,1,1,1,1], device_id = device_id)     # Pass a list of bools 
+                    print("Write coils : ", result)
 
                     # # Read discrete inputs
-                    # result = self.client.read_discrete_inputs(address = 0, count = 2, device_id=5) # It will return a default of 8 bits, even if count = 2
+                    # result = self.client.read_discrete_inputs(address = 0, count = 2, device_id = device_id) # It will return a default of 8 bits, even if count = 2
                     # print("Discrete input : ", result)
                     # print("bits : ", result.bits)
                     
 
                     # # Write a value to the holding register
-                    result = self.client.write_register(address=0, value=10, device_id=10)
-                    print("Write register : ", result)
+                    # result = self.client.write_register(address=0, value=10, device_id = device_id)
+                    # print("Write register : ", result)
 
                     # # Write values to the holding registers with a integer list.
-                    # result = self.client.write_registers(address=0, values=[100,100,0,0], device_id=5)    # Pass list of integers
+                    # result = self.client.write_registers(address=0, values=[100,100,0,0], device_id = device_id)    # Pass list of integers
                     # print("Write registers : ", result)
                     
-                    # result = self.client.read_input_registers(address=0, count=2, device_id=5)  # Get milliamps from motor 1                
-                    # print("Input registers : ", result)
-                    # print("registers : ", result.registers)
+                    result = self.client.read_input_registers(address=0, count=5, device_id = device_id)  # Get milliamps from motor 1                
+                    print("Input registers : ", result)
+                    print("registers : ", result.registers)
                         
                     # 5. Wait before polling again
                     time.sleep(0.1)  # Poll every 2 seconds
