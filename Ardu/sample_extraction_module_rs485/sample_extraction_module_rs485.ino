@@ -47,15 +47,14 @@ float temperature = 0.0;
 
 SoftwareSerial RS485_serial(RS485_RX, RS485_TX);  // Create a serial port with the software serial pins.
 ModbusRTUSlave modbus(RS485_serial, DE_PIN);       // Create a modbus object that uses the software serial port.
-
-//  Coils = Digital outputs/writes, Eg: LED, Relays
 //  Coil_0  Enable module/ Emergency Power OFF
-//  Coil_1  Enable Humidity & Temperature sensor
-//  Coil_2  Enable load cell sensor
+//  Coil_1  Get humidity & Temperature
+//  Coil_2  Get sample weight (avg of 5)
 //  Coil_3  Enable pump 1
 //  Coil_4  Enable pump 2
-const uint8_t num_coils = 5;                        // Number of digital outputs, W only
-bool array_coils[num_coils] = {0, 0, 0, 0, 0};                         // array holding all the digital outputs, W only
+//  Coil_5  Tare load cell
+const uint8_t num_coils = 6;                        // Number of digital outputs, W only
+bool array_coils[num_coils] = {0, 0, 0, 0, 0, 0};   // array holding all the digital outputs, W only
 
 // Discrete Inputs = Digital inputs/reads, Eg: Switches
 //  Discrete_input_0  Humidity & Temperature sensor error
@@ -128,17 +127,23 @@ void loop()
 
   get_temp_hum();
 
-  get_weight();
+  get_sample_weight();
 
   set_motor_1(array_holding_registers[0]);
 
   set_motor_2(array_holding_registers[1]);
+
+  tare_load_cell();
+
+
 }
 
 
 
 // Reading temperature or humidity takes about 250 milliseconds!
 // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+// Multiplying the humidity and temperature values by a scale of 10 since modbus cannot handle floats.
+// The scaled values must divided by 10 to obtain a floating point value
 void get_temp_hum() {
 
   // if Coil_1 : Get DHT22 (Humidity & Temperature)
@@ -147,14 +152,14 @@ void get_temp_hum() {
     if (!dht.readTempAndHumidity(temp_hum_val))
     {
       Serial.print("Humidity: ");
-      array_input_registers[0] = temp_hum_val[0];
-      humidity = temp_hum_val[0];
+      array_input_registers[0] = temp_hum_val[0] * 10;
+      humidity = array_input_registers[0];
       Serial.print(humidity);
       Serial.print(" %\t");
       Serial.print("Temperature: ");
 
-      array_input_registers[1] = temp_hum_val[1];
-      temperature = temp_hum_val[1];
+      array_input_registers[1] = temp_hum_val[1] * 10;
+      temperature = array_input_registers[1];
       Serial.print(temperature);
       Serial.println(" *C");
       array_discrete_inputs[0] = 0;   // No error in obtaining Humidity and temperature, sensor OK
@@ -167,13 +172,15 @@ void get_temp_hum() {
   }
 }
 
-void get_weight()
+void get_sample_weight()
 {
-  weight = scale.get_units(5);  // Get average of 5 values
-  Serial.print("Weight (units) = ");
-  Serial.println(weight, 1);
-
-  array_input_registers[2] = weight;
+  if (array_coils[2] == 1)
+  {
+    weight = scale.get_units(5);  // Get average of 5 values
+    Serial.print("Weight (units) = ");
+    Serial.println(weight, 1);
+    array_input_registers[2] = weight * 10;
+  }
 }
 
 
@@ -191,7 +198,7 @@ void set_motor_1(int value)
   }
 
   Serial.print("Current sense motor 1 = ");
-  Serial.println(array_input_registers[3]);  
+  Serial.println(array_input_registers[3]);
 }
 
 // Infuse
@@ -219,4 +226,10 @@ void enable_module()
     digitalWrite(RELAY_PIN, HIGH );
   else if (array_coils[0] == 0)
     digitalWrite(RELAY_PIN, LOW );
+}
+
+void tare_load_cell()
+{
+  if (array_coils[5] == 1)
+    scale.tare();  // All readings will thus be tared.
 }

@@ -35,17 +35,19 @@ class SAMPLE_BYPASS():
         # Some progress bar to monitor the level/ weight of the sample in the bottle. 
         # Start/ stop sample infusion into centrifuge, given a flow rate/ PWM value. 
         # Same progress bar to denote the sample/ weight level in the bottle
-        # Get Humidity and Temperature info, lowest priority                 
-        self.window = window             
+        # Get Humidity and Temperature info, lowest priority 
+                
+        self.window = window
+        # self.data_exchange = data_exchange              
         self.rs485_gui_slave = rs485_gui_slave                
         self.color = "#d9d9d9"    # Deafult gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_sample_bypass'].cget("bg"))              
-        self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Scale_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{}, 'Scale_dict':{} }
+        self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Entry_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{} }
         self.gen_sample_bypass_gui()        
 
     def gen_sample_bypass_gui(self):
-        self.canvas_height = 800
-        self.canvas_width = 800 
-        self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "#d9d9d9",  highlightthickness = 5)  
+        self.canvas_height = 500
+        self.canvas_width = 500 
+        self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
         self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= self.color)        
         self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )         
 
@@ -73,25 +75,21 @@ class SAMPLE_BYPASS():
         self.gui_dict['Label_dict']['get_weight'] = Label(self.frame, text="### grams")
 
         self.gui_dict['Label_dict']['set_weight_withdraw'] = Label(self.frame, text="Set sample weight to withdraw (0 to 200 grams)", wraplength=400, width = width)
-        self.gui_dict['Scale_dict']['set_weight_withdraw_DoubleVar'] = DoubleVar(value=0.0)
-        self.gui_dict['Scale_dict']['set_weight_withdraw'] = Scale(self.frame,
-                                                                    variable=self.gui_dict['Scale_dict']['set_weight_withdraw_DoubleVar'],
-                                                                    from_= 0, to=100, orient=HORIZONTAL, length=250, border=1, width=20) 
+        self.gui_dict['Entry_dict']['set_weight_withdraw_DoubleVar'] = DoubleVar(value=0.0)
+        self.gui_dict['Entry_dict']['set_weight_withdraw'] = Entry(self.frame, textvariable=self.gui_dict['Entry_dict']['set_weight_withdraw_DoubleVar'], width=20)
 
         self.gui_dict['Label_dict']['set_weight_infuse'] = Label(self.frame, text="Set sample weight to infuse (0 to <150 grams)", wraplength=400, width = width)
-        self.gui_dict['Scale_dict']['set_weight_infuse_DoubleVar'] = DoubleVar(value=0.0)
-        self.gui_dict['Scale_dict']['set_weight_infuse'] = Scale(self.frame, variable=self.gui_dict['Scale_dict']['set_weight_infuse_DoubleVar'],
-                                                                    from_=0, to=100,orient=HORIZONTAL, length=250, border=1, width=20)
+        self.gui_dict['Entry_dict']['set_weight_infuse_DoubleVar'] = DoubleVar(value=0.0)
+        self.gui_dict['Entry_dict']['set_weight_infuse'] = Entry(self.frame, textvariable=self.gui_dict['Entry_dict']['set_weight_infuse_DoubleVar'], width=20)        
 
         self.gui_dict['Label_dict']['set_pump_1_rpm'] = Label(self.frame, text="Set Pump 1 RPM % (0 to 100)", wraplength=250, width = width)
-        self.gui_dict['Scale_dict']['set_pump_1_rpm_DoubleVar'] = DoubleVar(value=0)
-        self.gui_dict['Scale_dict']['set_pump_1_rpm'] = Scale(self.frame, variable=self.gui_dict['Scale_dict']['set_pump_1_rpm_DoubleVar'],
-                                                                    from_=0, to=100,orient=HORIZONTAL, length=250, border=1, width=20)
+        self.gui_dict['Entry_dict']['set_pump_1_rpm_DoubleVar'] = DoubleVar(value=0)
+        self.gui_dict['Entry_dict']['set_pump_1_rpm'] = Entry(self.frame, textvariable=self.gui_dict['Entry_dict']['set_pump_1_rpm_DoubleVar'], width=20)
 
         self.gui_dict['Label_dict']['set_pump_2_rpm'] = Label(self.frame, text="Set Pump 2 RPM % (0 to 100)", wraplength=250, width = width)
-        self.gui_dict['Scale_dict']['set_pump_2_rpm_DoubleVar'] = DoubleVar(value=0)
-        self.gui_dict['Scale_dict']['set_pump_2_rpm'] = Scale(self.frame, variable=self.gui_dict['Scale_dict']['set_pump_2_rpm_DoubleVar'],
-                                                                    from_=0, to=100,orient=HORIZONTAL, length=250, border=1, width=20)        
+        self.gui_dict['Entry_dict']['set_pump_2_rpm_DoubleVar'] = DoubleVar(value=0)
+        self.gui_dict['Entry_dict']['set_pump_2_rpm'] = Entry(self.frame, textvariable=self.gui_dict['Entry_dict']['set_pump_2_rpm_DoubleVar'], width=20)
+        
         # Withdraw
         self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'] = IntVar(value=0)
         self.gui_dict['Check_dict']['start_stop_withdraw'] = Checkbutton(self.frame,
@@ -130,14 +128,14 @@ class SAMPLE_BYPASS():
         self.gui_dict['Button_dict']['get_weight'].grid(row = 5, column = 0, sticky = "nw", pady = 2, columnspan = 1)
         self.gui_dict['Label_dict']['get_weight'].grid(row = 5, column = 1, sticky = "nw", pady = 2, columnspan = 1)
         self.gui_dict['Label_dict']['set_weight_withdraw'].grid(row = 6, column = 0, sticky = "nw", pady = 2, columnspan = 1)
-        self.gui_dict['Scale_dict']['set_weight_withdraw'].grid(row = 6, column = 1, sticky = "nw", pady = 2, columnspan = 1)
+        self.gui_dict['Entry_dict']['set_weight_withdraw'].grid(row = 6, column = 1, sticky = "nw", pady = 2, columnspan = 1)
         self.gui_dict['Label_dict']['set_weight_infuse'].grid(row = 7, column = 0, sticky = "nw", pady = 2, columnspan = 1)
-        self.gui_dict['Scale_dict']['set_weight_infuse'].grid(row = 7, column = 1, sticky = "nw", pady = 2, columnspan = 1)                    
+        self.gui_dict['Entry_dict']['set_weight_infuse'].grid(row = 7, column = 1, sticky = "nw", pady = 2, columnspan = 1)                    
         
         self.gui_dict['Label_dict']['set_pump_1_rpm'].grid(row = 8, column = 0, sticky = "nw", pady = 2, columnspan = 1)        
-        self.gui_dict['Scale_dict']['set_pump_1_rpm'].grid(row = 8, column = 1, sticky = "nw", pady = 2, columnspan = 1)        
+        self.gui_dict['Entry_dict']['set_pump_1_rpm'].grid(row = 8, column = 1, sticky = "nw", pady = 2, columnspan = 1)        
         self.gui_dict['Label_dict']['set_pump_2_rpm'].grid(row = 9, column = 0, sticky = "nw", pady = 2, columnspan = 1)        
-        self.gui_dict['Scale_dict']['set_pump_2_rpm'].grid(row = 9, column = 1, sticky = "nw", pady = 2, columnspan = 1)        
+        self.gui_dict['Entry_dict']['set_pump_2_rpm'].grid(row = 9, column = 1, sticky = "nw", pady = 2, columnspan = 1)        
         
         self.gui_dict['Check_dict']['start_stop_withdraw'].grid(row = 10, column = 0, sticky = "nw", pady = 2, columnspan = 1)
         self.gui_dict['Progress_bar']['withdraw_progress'].grid(row = 11, column = 0, sticky = "nw", pady = 2, columnspan = 1)
@@ -172,12 +170,79 @@ class SAMPLE_BYPASS():
         self.rs485_gui_slave.update_gui()
         self.rs485_gui_slave.update_slave_reg_list()     # Get values from registers of slave        
 
-        target_weight = self.gui_dict['Scale_dict']['set_weight_withdraw_DoubleVar'].get()   # Returns float
+        # Get the weight entered in the Entry box.
+        try:
+            target_weight = float(self.gui_dict['Entry_dict']['set_weight_withdraw'].get())
+        except:
+            print("In sample_bypass_withdraw(): Invalid sample weight entered. ")            
+            # Flash red - white is target_weight entered was NOT OK
+            for i in range(0,2):
+                self.gui_dict['Entry_dict']['set_weight_withdraw'].configure(bg="red")
+                self.window.after(100, self.wait_time())
+                self.window.update()
+                self.gui_dict['Entry_dict']['set_weight_withdraw'].configure(bg="white")
+                self.window.after(100, self.wait_time())
+                self.window.update()
+
+        # check if the user entered weight is inside limits. hard coded for now.
+        if (0 < target_weight and target_weight < 200.0):
+            # Flash green - white is value entered was OK
+            for i in range(0,2):
+                self.gui_dict['Entry_dict']['set_weight_withdraw'].configure(bg="light green")
+                self.window.after(100, self.wait_time())
+                self.window.update()
+                self.gui_dict['Entry_dict']['set_weight_withdraw'].configure(bg="white")
+                self.window.after(100, self.wait_time())
+                self.window.update()
+        else:
+            # Flash orange - white is target_weight entered was not in limits.
+            for i in range(0,2):
+                self.gui_dict['Entry_dict']['set_weight_withdraw'].configure(bg="orange")
+                self.window.after(100, self.wait_time())
+                self.window.update()
+                self.gui_dict['Entry_dict']['set_weight_withdraw'].configure(bg="white")
+                self.window.after(100, self.wait_time())
+                self.window.update()  
+                return                  
+        
+        print("In sample_bypass_withdraw(): Sample weight to withdraw = ", target_weight, " grams")        
 
         # We need to check of the present weight is sufficient to withdraw more sample !
         if self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'].get() == 1 and (target_weight + current_weight)<= 200.0 :
-            # Enable the pump to withdraw with a user entered RPM            
-            pump_1_rpm = int(self.gui_dict['Scale_dict']['set_pump_1_rpm_DoubleVar'].get())      # Returns a float value, we convert to int for holding reg
+            # Enable the pump to withdraw with a user entered RPM
+            # Sanity check of RPM's entered value.
+            try:
+                pump_1_rpm = int(float(self.gui_dict['Entry_dict']['set_pump_1_rpm'].get()))
+            except:
+                print("In sample_bypass_withdraw(): Invalid pump 1 rpm entered. ")            
+                # Flash red - white if pump RPM is not ok
+                for i in range(0,2):
+                    self.gui_dict['Entry_dict']['set_pump_1_rpm'].configure(bg="red")
+                    self.window.after(100, self.wait_time())
+                    self.window.update()
+                    self.gui_dict['Entry_dict']['set_pump_1_rpm'].configure(bg="white")
+                    self.window.after(100, self.wait_time())
+                    self.window.update()            
+
+            # Check if the user enter values within a limit
+            if (0 < pump_1_rpm and pump_1_rpm < 100.0):
+                for i in range(0,2):
+                    self.gui_dict['Entry_dict']['set_pump_1_rpm'].configure(bg="light green")
+                    self.window.after(100, self.wait_time())
+                    self.window.update()
+                    self.gui_dict['Entry_dict']['set_pump_1_rpm'].configure(bg="white")
+                    self.window.after(100, self.wait_time())
+                    self.window.update()
+            else:
+                # Flash orange - white is target_weight entered was not in limits
+                for i in range(0,2):
+                    self.gui_dict['Entry_dict']['set_pump_1_rpm'].configure(bg="orange")
+                    self.window.after(100, self.wait_time())
+                    self.window.update()
+                    self.gui_dict['Entry_dict']['set_pump_1_rpm'].configure(bg="white")
+                    self.window.after(100, self.wait_time())
+                    self.window.update()
+                    return
 
             self.rs485_gui_slave.coils_list[3] = 1  # Pump 1 enable set to ON                        
             self.rs485_gui_slave.holding_reg_list[0] = pump_1_rpm   # Switch ON motor
@@ -199,7 +264,7 @@ class SAMPLE_BYPASS():
                 if target_weight <= current_weight:
                     print("In sample_bypass_withdraw(): Sample target weight withdrawn.")
                     print("In sample_bypass_withdraw(): Turning pump 1 OFF.")
-                    self.rs485_gui_slave.coils_list[3] = 0              # Pump 1 enable set to OFF,                          
+                    self.rs485_gui_slave.coils_list[3] = 0      # Pump 1 enable set to OFF,                          
                     self.rs485_gui_slave.holding_reg_list[0] = 0        # Switch OFF motor
                     self.rs485_gui_slave.update_gui()
                     self.rs485_gui_slave.update_slave_reg_list()     # Update slave 
@@ -212,12 +277,10 @@ class SAMPLE_BYPASS():
                 # Break out of the loop after 10 seconds
                 if (time_stop - time_start) >= 10:
                     print("In sample_bypass_withdraw(): Sample withdrawal timeout !")
-                    print("In sample_bypass_withdraw(): Turning pump 1 OFF.")
-                    self.rs485_gui_slave.coils_list[3] = 0              # Pump 1 enable set to OFF,                          
-                    self.rs485_gui_slave.holding_reg_list[0] = 0        # Switch OFF motor
-                    self.rs485_gui_slave.update_gui()
-                    self.rs485_gui_slave.update_slave_reg_list()     # Update slave                     
                     break
+
+            # Multiply the target_weight by 10 to send to the slave since modbus cannot handle floating point values.  
+            # target_weight = target_weight * 10
 
         # Turn off pump 1
         else:  
@@ -239,15 +302,7 @@ class SAMPLE_BYPASS():
         self.gui_dict['Label_dict']['humidity_value'].configure(text= str(self.rs485_gui_slave.input_reg_list[0]) + "%")     # Update input_reg
         self.gui_dict['Label_dict']['temperature_value'].configure(text= str(self.rs485_gui_slave.input_reg_list[1]))  # Update input_reg
         
-    # Function to blink a widget
-    def blink(self, widget, blink_num, color):
-        for i in range(0,blink_num):
-            widget.configure(bg=color)
-            self.window.after(100, self.wait_time())
-            self.window.update()
-            widget.configure(bg="white")
-            self.window.after(100, self.wait_time())
-            self.window.update()                
+
 
     def wait_time(self, *args):
         pass         
@@ -281,15 +336,17 @@ if __name__ == "__main__":
     root_window.rowconfigure( 0, weight = 1 ) # Stretch row 0 to fit height. 
     root_window.resizable(width=False, height=False)         # This makes the GUI of fixed size and prevents resizing.
 
+
     slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves (read xlsx file)
     slaves_mcfg.get_config()
+
     mi = Modbus_Interface()     # Create a RS485 Modbus RTU interface with baud rate, 8N1 ...etc. 
 
     # Notebook widget
     notebook = ttk.Notebook(root_window)
 
     # # Place frames for each slave.
-    slave_1 = rs485_gui_slave(window = root_window, slave_number = 3, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
+    slave_1 = rs485_gui_slave(window = root_window, slave_number = 3, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "pale turquoise")
     slave_1.gen_slave_modbus_gui()
     slave_1.canvas.grid(row = 0, column = 1, sticky = "nw",  columnspan = 1)        
     slave_1.vbar.grid(row = 0, column = 2, sticky = "ns", columnspan = 1, rowspan = 1)  
@@ -319,9 +376,10 @@ if __name__ == "__main__":
 
     notebook.grid(row=0, column=0)
 
+    # notebook.pack()
     notebook.bind("<<NotebookTabChanged>>", tab_selected)       # Bind a monitor to check if we change between Tabs.
 
-    # root_window.grid_columnconfigure((0,1), weight=2, uniform="column")   # This spaces the frame equally in columns    
+    # root_window.grid_columnconfigure((0,2,4), weight=2, uniform="column")   # This spaces the frame equally in columns    
 
     root_window.mainloop()       # Blocking function.        
 
