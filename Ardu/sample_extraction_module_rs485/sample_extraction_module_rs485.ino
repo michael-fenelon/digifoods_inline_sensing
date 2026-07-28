@@ -47,9 +47,18 @@ float temperature = 0.0;
 
 SoftwareSerial RS485_serial(RS485_RX, RS485_TX);  // Create a serial port with the software serial pins.
 ModbusRTUSlave modbus(RS485_serial, DE_PIN);       // Create a modbus object that uses the software serial port.
+
+/*
+ NOTE:
+ Modbus is natively uin16_t, but TX and RX of negative integers is just intepretation with 2's complement.
+ In Pymodbus we convert the uint16_t back to int16_t values.
+ So: array_holding_registers and array_input_registers can hold negative numbers.
+ *** For float, we need to scale and divide to obtain a floating point value in Arduino and Python.
+*/
+
 //  Coil_0  Enable module/ Emergency Power OFF
 //  Coil_1  Get humidity & Temperature
-//  Coil_2  Get sample weight (avg of 5)
+//  Coil_2  Get sample weight (1 value, not avg) 
 //  Coil_3  Enable pump 1
 //  Coil_4  Enable pump 2
 //  Coil_5  Tare load cell
@@ -68,7 +77,8 @@ bool array_discrete_inputs[num_discrete_inputs] = {false, false};
 //  Holding_register_2  NA
 //  Holding_register_3  NA
 const uint8_t num_holding_registers = 4;            // Number of holding registers, R + W
-uint16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array holding N holding registers. R+W
+
+int16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array holding N holding registers. R+W
 // The brakes are NOT ON/OFF but are from 0 to 400, so we use a holding register to implement brakes
 
 //  Input_registers = 16bit variable values, R only.
@@ -78,7 +88,7 @@ uint16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array
 //  Input_register_3  Motor 1 current sense (mA)
 //  Input_register_4  Motor 2 current sense (mA)
 const uint8_t num_input_registers = 5;              // Number of input registers, R only
-uint16_t array_input_registers[num_input_registers] = {0, 0, 0, 0, 0};  // Array for input registers, R only.
+int16_t array_input_registers[num_input_registers] = {0, 0, 0, 0, 0};  // Array for input registers, R only.
 
 void setup()
 {
@@ -134,11 +144,7 @@ void loop()
   set_motor_2(array_holding_registers[1]);
 
   tare_load_cell();
-
-
 }
-
-
 
 // Reading temperature or humidity takes about 250 milliseconds!
 // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
@@ -176,7 +182,7 @@ void get_sample_weight()
 {
   if (array_coils[2] == 1)
   {
-    weight = scale.get_units(5);  // Get average of 5 values
+    weight = scale.get_units(1);  // Get average of 5 values
     Serial.print("Weight (units) = ");
     Serial.println(weight, 1);
     array_input_registers[2] = weight * 10;

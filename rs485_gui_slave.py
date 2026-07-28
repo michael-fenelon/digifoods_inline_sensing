@@ -18,12 +18,12 @@ class rs485_gui_slave():
         #We don't create local copy of the self.slaves_mcfg variable since in the GUI this variable would need to be accessed across all tabs and slaves.
         self.color = color   
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Entry_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Scale_dict':{} }
-        self.coils_list = []            # Coils = Digital outputs/writes, Eg: LED, Relays
-        self.discrete_inputs_list = []  # Discrete Inputs = Digital inputs/reads, Eg: Switches
-        self.holding_reg_list = []      # Holding registers = 16bit variable values, R+W
+        self.coils_list = []            # Coils = Digital outputs/writes, Eg: LED, Relays, Bool list
+        self.discrete_inputs_list = []  # Discrete Inputs = Digital inputs/reads, Eg: Switches, Bool list
+        self.holding_reg_list = []      # Holding registers = 16bit variable values, R+W, INT16_t list
         self.holding_reg_min_list = []
         self.holding_reg_max_list = []
-        self.input_reg_list = []        # Input_registers = 16bit variable values, R only.
+        self.input_reg_list = []        # Input_registers = 16bit variable values, R only. INT16_T list
         self.row_counter = 0            # Just to keep track of the tkinter frame row for grid()
         # self.window.bind('<Return>', self.window_bind_callback )            # This gets the values entered in the gui.
 
@@ -41,8 +41,6 @@ class rs485_gui_slave():
 
         self.canvas.config(yscrollcommand = self.vbar.set)
         self.frame.bind('<Configure>', self.on_config_canvas)  
-        # self.frame.bind_all("<Button-4>", self.on_mouse_wheel)   # Linux up
-        # self.frame.bind_all("<Button-5>", self.on_mouse_wheel)   # Linux down        
 
         # Definitions
         self.gui_dict['Label_dict']['Name'] = Label(self.frame, text = "Name : " + self.slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Name"], bg = self.color, wraplength = self.canvas_width - 10)
@@ -200,93 +198,85 @@ class rs485_gui_slave():
 
         # Update button: Large vertical button used and command/callback to read all the holding register entries, update the holding_reg_list and send value to the slave.
         # We use a button so that only ONE slave uses the RS485 line at a time; avoids RS485 communication conflicts between slaves.
-        self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "update", command = self.update_slave, wraplength = 50) 
+        self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "update", command = self.update_slave_via_gui, wraplength = 50) 
         self.gui_dict['Button_dict']['update'].grid(row = 4, column = 3, sticky = "nse", pady = 2, columnspan = 1, rowspan = self.row_counter)
 
-    # def update_coils(self, clicked_coil):            
-    #     value = self.gui_dict['Check_dict']['Coil_' + str(clicked_coil) + "_var"].get()
-    #     self.coils_list[clicked_coil] = value        # Update the coil_list
-    #     print("Pressed slave " + str(self.slave_number) + " Coil " + str(clicked_coil) + " value = " + str(value)) 
-    #     print("Updated Coil list ", self.coils_list, len(self.coils_list))
-    #     res = self.mi.client.write_coil(address = clicked_coil, value = value, device_id = self.slave_address)
-    #     print("Updated coil result ", res)
-
     # Callback that gets all the values from the coil Checkboxes, Scale/Slider, Entry boxes and update the values in the slave. Does sanity check for each entry and update the holding_reg.    
-    def update_slave(self):
+    def update_slave_via_gui(self):
         # UPDATE COILS: Write switches/status/ON/OFF to slave, values are bool: True/False
         # Get the values of all check boxes and update self.coil_list
-        print("In update_slave() Updating coils for Slave ", self.slave_number)
+        print("\nIn update_slave_via_gui() Updating coils for Slave ", self.slave_number)
         for i in range(0, len(self.coils_list)):
             value = self.gui_dict['Check_dict']['Coil_' + str(i) + "_var"].get()
             self.coils_list[i] = value        # Update the coil_list
             # print("In update_slave(): Pressed slave " + str(self.slave_number) + " Coil " + str(i) + " value = " + str(value))    # Debug
         
-        print("In update_slave(): Updated Coil list ", self.coils_list, len(self.coils_list))        
+        print("In update_slave_via_gui(): Updated Coil list ", self.coils_list, len(self.coils_list))        
         res = self.mi.client.write_coils(address = 0, values = copy.deepcopy(self.coils_list), device_id = self.slave_address)      # We use a copy.deepcopy() since the client appends the variable self.coil_list for some reason !!!
-        print("In update_slave(): write_coils : res :", res)
+        print("In update_update_slave_via_guislave(): write_coils : res :", res)
 
         # UPDATE DISCRETE INPUTS Read switches/status/ON/OFF from slave, values are bool: True/False. 
         res = self.mi.client.read_discrete_inputs(address = 0, count = len(self.discrete_inputs_list), device_id = self.slave_address)
-        print("In update_slave(): discrete inputs : ", res)
+        print("In update_slave_via_gui(): discrete inputs : ", res)
         for i in range(0, len(self.discrete_inputs_list)):
             self.discrete_inputs_list[i] = res.bits[i]
             self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
-        print("In update_slave(): discrete_inputs_list ",self.discrete_inputs_list )
+        print("In update_slave_via_gui(): discrete_inputs_list ",self.discrete_inputs_list )
 
-        # UPDATE HOLDING REGISTERS. Registers contain uint16_t values. 
-        print("\nIn update_slave(): Updating holding registers for Slave ", self.slave_number)
+        # UPDATE HOLDING REGISTERS. Registers contain int16_t values. 
+        print("\nIn update_slave_via_gui(): Updating holding registers for Slave ", self.slave_number)
         for holding_reg_num in range(0, len(self.holding_reg_list)):
             user_entry = self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target_DoubleVar"].get()   # This is a float value         
             value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
             # print("Thresholded value ", value)            
             self.holding_reg_list[holding_reg_num] = int(value)                        
-            self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))            
-        res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)      # Send values to slave/device
-        print("In update_slave(): write_registers : ", res)
-        print("In update_slave(): Holding_reg_list ", self.holding_reg_list)
+            self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))  
 
-        # UPDATE INPUT REGISTERS: Read from slave and populate the GUI.
-        # Registers contain uint16_t values
-        res = self.mi.client.read_input_registers(address=0, count = len(self.input_reg_list), device_id=self.slave_address)
-        print("In update_slave(): read_input_registers : ")
+        # Write data to holding registers: Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list. 
+        self.holding_reg_list = self.mi.client.convert_to_registers(value=self.holding_reg_list, data_type=self.mi.client.DATATYPE.INT16, word_order="little")        
+        res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)      # Send values to slave/device
+        # print("In update_slave_via_gui(): write_registers : ", res)
+        print("In update_slave_via_gui(): Holding_reg_list ", self.holding_reg_list)
+
+        # UPDATE INPUT REGISTERS: Read from slave and populate the GUI. Registers contain int16_t values. 
+        # Read data: Convert from Arduino's INT16_T list -> Pymodbus's default UINT16 list -> Actual INT16 list
+        print("In update_slave_via_gui(): read_input_registers : ")
+        result = self.mi.client.read_input_registers(address=0, count = len(self.input_reg_list), device_id=self.slave_address)
+        res = self.mi.client.convert_from_registers(result.registers, self.mi.client.DATATYPE.INT16, 'little')    #  little endian since arduino uses little endian
         for i in range(0,len(self.input_reg_list)):
-            self.input_reg_list[i] = round(res.registers[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
+            self.input_reg_list[i] = round(res[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
             self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
-        print("In update_slave(): input registers = ", self.input_reg_list)
+        print("In update_slave_via_gui(): input registers = ", self.input_reg_list)
 
         self.window.update()    # Update the GUI with latest values.
 
-    def update_slave_reg_list(self):
-        # UPDATE COILS: Write switches/status/ON/OFF to slave
-        # values are bool: True/False
-        print("In update_slave_reg_list(): Updated Coil list ", self.coils_list, len(self.coils_list))        
+    def update_slave_via_reg_list(self):
+        # UPDATE COILS: Write switches/status/ON/OFF to slave, values are bool: True/False. 
+        print("\nIn update_slave_via_reg_list(): Updated Coil list ", self.coils_list, ", length of coil_list = ", len(self.coils_list))        
         res = self.mi.client.write_coils(address = 0, values = copy.deepcopy(self.coils_list), device_id = self.slave_address)      # We use a copy.deepcopy() since the client appends the variable self.coil_list for some reason !!!
-        print("In update_slave_reg_list(): write_coils : res :", res)
 
-        # UPDATE DISCRETE INPUTS Read switches/status/ON/OFF from slave
-        # values are bool: True/False
-        res = self.mi.client.read_discrete_inputs(address = 0, count = len(self.discrete_inputs_list), device_id = self.slave_address)
-        print("In update_slave_reg_list(): discrete inputs : ", res)
+        # UPDATE DISCRETE INPUTS Read switches/status/ON/OFF from slave, values are bool: True/False. 
+        res = self.mi.client.read_discrete_inputs(address = 0, count = len(self.discrete_inputs_list), device_id = self.slave_address)        
         for i in range(0, len(self.discrete_inputs_list)):
             self.discrete_inputs_list[i] = res.bits[i]
             self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
-        print("In update_slave_reg_list(): discrete_inputs_list ",self.discrete_inputs_list )
+        print("In update_slave_via_reg_list(): discrete_inputs_list ",self.discrete_inputs_list )
 
-        # UPDATE HOLDING REGISTERS:
-        # Registers contain uint16_t values                    
-        res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)      
-        print("In update_slave_reg_list(): write_registers : ", res)
-        print("In update_slave_reg_list(): Holding_reg_list ", self.holding_reg_list)
+        # UPDATE HOLDING REGISTERS, Write data to Arduino, registers contain int16_t values.
+        # Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list
+        self.holding_reg_list = self.mi.client.convert_to_registers(value=self.holding_reg_list, data_type=self.mi.client.DATATYPE.INT16, word_order="little") 
+        res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)              
+        print("In update_slave_via_reg_list(): Holding_reg_list ", self.holding_reg_list, ", length of holding_list = ", len(self.holding_reg_list))
 
-        # UPDATE INPUT REGISTERS: Read from slave and populate the GUI.
-        # Registers contain uint16_t values
-        res = self.mi.client.read_input_registers(address=0, count = len(self.input_reg_list), device_id=self.slave_address)
-        print("In update_slave_reg_list(): read_input_registers : ")
+        # UPDATE INPUT REGISTERS: Read from slave and populate the GUI. Registers contain int16_t values. 
+        # Convert from Arduino's INT16_T list -> Pymodbus's default UINT16 list -> Actual INT16 list
+        result = self.mi.client.read_input_registers(address=0, count = len(self.input_reg_list), device_id=self.slave_address)        
+        res = self.mi.client.convert_from_registers(result.registers, self.mi.client.DATATYPE.INT16, 'little') 
         for i in range(0,len(self.input_reg_list)):
-            self.input_reg_list[i] = round(res.registers[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
+            self.input_reg_list[i] = round(res[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
             self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
 
-        print("In update_slave_reg_list(): input registers = ", self.input_reg_list)
+        print("In update_slave_via_reg_list(): input registers = ", self.input_reg_list, ", length of input_reg = ", len(self.input_reg_list))
         
         self.window.update()        
         
@@ -310,6 +300,11 @@ class rs485_gui_slave():
             self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].configure(text = str(self.input_reg_list[input_reg_num]))
 
         self.window.update()
+
+    # Function to enable or disable any user input buttons, sliders, check boxes...etc
+    def enable_disable(self):
+        pass
+
 
     def on_config_canvas(self, e ):        
         # Set the canvas scrollregion to fit the whole of frame.
