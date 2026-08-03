@@ -182,7 +182,15 @@ class SAMPLE_BYPASS():
     def sample_bypass_tare(self):
         # This is to tare the weight on the Arduino side:
         # arduino resets this values to 0 in the array_coil_list[5]
-        self.rs485_gui_slave.coils_list[5] = 1   
+        self.rs485_gui_slave.coils_list[5] = 1                        
+        self.rs485_gui_slave.update_slave_via_reg_list()
+        self.rs485_gui_slave.update_gui()        
+
+        # We need to set coils_list[5] = 0, else the arduino will tare the load cell in the void loop()
+        # self.rs485_gui_slave.coils_list[5] = 0                        
+        # self.rs485_gui_slave.update_slave_via_reg_list()
+        # self.rs485_gui_slave.update_gui()        
+
         self.sample_bypass_get_sample_weight()        
 
     # Function to get the sample weight, default in arduino code is to get 5 sample and return average.
@@ -190,37 +198,35 @@ class SAMPLE_BYPASS():
         self.rs485_gui_slave.coils_list[2] = 1                
         self.rs485_gui_slave.update_gui()
         self.rs485_gui_slave.update_slave_via_reg_list()
-               
+        self.current_weight = self.rs485_gui_slave.input_reg_list[2]     # Update the input reg, float value     
         self.untared_weight = copy.deepcopy(self.rs485_gui_slave.input_reg_list[3])
-        self.current_weight = self.rs485_gui_slave.input_reg_list[2] - self.untared_weight     # Update the input reg, float value    
-        # self.current_weight = copy.deepcopy(self.rs485_gui_slave.input_reg_list[2])     # Update the input reg, float value             
         
-        # Update GUI with reading        
-        self.gui_dict['Label_dict']['untared_weight_value'].configure(text=str(round(self.untared_weight,2)) + " (grams)" )                
-        self.gui_dict['Label_dict']['get_weight'].configure(text = str(round(self.current_weight,2))) # float value
+        # update GUI with reading
+        self.gui_dict['Label_dict']['untared_weight_value'].configure(text=str(self.untared_weight) + " (grams)" )                
+        self.gui_dict['Label_dict']['get_weight'].configure(text = str(self.current_weight)) # float value
         self.window.update()
-
-        # Note: empty weight of the glass bottle with tubing...etc is about 585.5 grams.
 
     def sample_bypass_withdraw(self): 
         self.gui_dict['Label_dict']['withdraw_status'].config(text="Started", bg="light blue")
         self.sample_bypass_get_sample_weight()                  
         target_weight = self.gui_dict['Scale_dict']['set_weight_withdraw_DoubleVar'].get()   # Returns float
-              
-        total = target_weight + self.untared_weight
-        if self.current_weight <= 200 and total <= 750.0:
-            print("In sample_bypass_withdraw(): Total weight (g) = ", total)           
-        else:
+
+        # We need to check if the present weight is sufficient to withdraw more sample, threshold is 200 grams        
+        total = target_weight + self.current_weight
+        if 200 <= total:
             print("In sample_bypass_withdraw(): The target weight is more that total weight threshold.")
             print("     total weight (g) = ", total )
             print("CANNOT WITHDRAW SAMPLE")
             self.gui_dict['Label_dict']['withdraw_status'].config(text="Total weight exceeds capacity", bg="red")
-            return                         
+            return            
+        else:
+            print("In sample_bypass_withdraw(): Total weight (g) = ", total)
 
         # There are two states of the checkbox
         # if checkbox is True, do stuff
-        if self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'].get() == 1:            
-            self.gui_dict['Progress_bar']['withdraw_progress']['value'] = 0           # Clear the progress bar
+        if self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'].get() == 1:
+            # Clear the progress bar
+            self.gui_dict['Progress_bar']['withdraw_progress']['value'] = 0           
             time_start = copy.deepcopy(time.time())      # Start a timer
 
             while True:
@@ -252,9 +258,7 @@ class SAMPLE_BYPASS():
 
                 # Break out of the loop after 10 seconds
                 # At 100% RPM with 12V adapter, the pump can withdraw sample in about 25 seconds, so we set a timeout for 30 seconds. 
-                # The timeout needs to be proportional to the target volume.
-                # assumption: 100ml can be withdrawn in about 30seconds, thus x ml would take 20 * x ml/100. leeway of 2 seconds 
-                if (time_stop - time_start) >= int(target_weight * 32/100):
+                if (time_stop - time_start) >= 30:
                     print("In sample_bypass_withdraw(): Sample withdrawal timeout !")
                     print("In sample_bypass_withdraw(): Turning pump 1 OFF.")
                     self.rs485_gui_slave.coils_list[3] = 0              # Pump 1 enable set to OFF,                          
@@ -283,7 +287,7 @@ class SAMPLE_BYPASS():
             self.sample_bypass_get_sample_weight()                  
             target_weight = self.gui_dict['Scale_dict']['set_weight_infuse_DoubleVar'].get()   # Returns float
             initial_weight = copy.deepcopy(self.current_weight)        # Since we have to do subtraction later. 
-            print("In sample_bypass_infuse(): Current weight ", self.current_weight)
+            print("Current weight ", self.current_weight)
 
             self.gui_dict['Progress_bar']['infuse_progress']['value'] = 0
 
@@ -334,7 +338,7 @@ class SAMPLE_BYPASS():
                         # self.gui_dict['Progress_bar']['infuse_progress']['value'] = int((infused_weight/target_weight) * 100) # weight progress
 
                     # Break out of the loop after 10 seconds
-                    if (time_stop - time_start) >= int(target_weight * 32/100):
+                    if (time_stop - time_start) >= 30:
                         print("In sample_bypass_infuse(): Sample infuse timeout !")
                         print("In sample_bypass_infuse(): Turning Pump 2 OFF.")
                         self.rs485_gui_slave.coils_list[4] = 0              # Pump 2 enable set to OFF,                          
@@ -369,6 +373,7 @@ class SAMPLE_BYPASS():
         self.rs485_gui_slave.coils_list[1] = 0          
         self.rs485_gui_slave.update_gui()
         self.rs485_gui_slave.update_slave_via_reg_list()        
+
 
     # Function to blink a widget
     def blink(self, widget, blink_num, color):

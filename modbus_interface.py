@@ -43,10 +43,10 @@ class Modbus_Interface():
                     #     print(f"Register Values: {result.registers}")
 
                     # Write a HIGH/LOW to the coil
-                    # toggle = not toggle
-                    # result = self.client.write_coil(address=0, value=toggle, device_id = device_id)   # Just to flash an led. 
-                    # # result = self.client.write_coil(address=0, value=0, device_id = device_id)
-                    # print("Write coils : ", result)
+                    toggle = not toggle
+                    result = self.client.write_coil(address=0, value=toggle, device_id = device_id)   # Just to flash an led. 
+                    # result = self.client.write_coil(address=0, value=0, device_id = device_id)
+                    print("Write coils : ", result)
                     
                     # Write HIGH/LOW to all coils with a list
                     # result = self.client.write_coils(address=0, values=[1,1,1,1,1,0], device_id = device_id)     # Pass a list of bools 
@@ -65,19 +65,19 @@ class Modbus_Interface():
                     # result = self.client.write_registers(address=0, values=[100,100,0,0], device_id = device_id)    # Pass list of integers
                     # print("Write registers : ", result)
 
-                    # Convert -ve numbers from Arduino's int16_t list -> receive it as uint16_t -> convert to int16 in python. 
-                    print("Convert from Arduino's INT16_T list -> Pymodbus's default UINT16 list -> Actual INT16 list")
-                    result = self.client.read_holding_registers(address=0, count= 4, device_id = device_id)    
-                    print("Before conversion = ", result.registers)                    
-                    res = self.client.convert_from_registers(result.registers, self.client.DATATYPE.INT16, 'little')    #  little endian since arduino uses little endian
-                    print("After conversion", res)
+                    # # Convert -ve numbers from Arduino's int16_t list -> receive it as uint16_t -> convert to int16 in python. 
+                    # print("Convert from Arduino's INT16_T list -> Pymodbus's default UINT16 list -> Actual INT16 list")
+                    # result = self.client.read_holding_registers(address=0, count= 4, device_id = device_id)    
+                    # print("Before conversion = ", result.registers)                    
+                    # res = self.client.convert_from_registers(result.registers, self.client.DATATYPE.INT16, 'little')    #  little endian since arduino uses little endian
+                    # print("After conversion", res)
 
-                    # Write -ve values to the holding registers of arduino with a signed integer list.                    
-                    print("Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list")
-                    reg_list = self.client.convert_to_registers(value=[-100, 100, 0, 0], data_type=self.client.DATATYPE.INT16, word_order="little")
-                    print("reg_list ", reg_list)
-                    result = self.client.write_registers(address=0, values=reg_list, device_id = device_id)    # Pass list of integers
-                    print("Write registers : ", result)
+                    # # Write -ve values to the holding registers of arduino with a signed integer list.                    
+                    # print("Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list")
+                    # reg_list = self.client.convert_to_registers(value=[-100, 100, 0, 0], data_type=self.client.DATATYPE.INT16, word_order="little")
+                    # print("reg_list ", reg_list)
+                    # result = self.client.write_registers(address=0, values=reg_list, device_id = device_id)    # Pass list of integers
+                    # print("Write registers : ", result)
 
                     # # R+W of Floats to Arduino directly is not possible.
                     # # Instead we scale and divide the values before transmisstion. 

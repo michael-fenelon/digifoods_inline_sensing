@@ -3,6 +3,7 @@
 //   DHT22: Temperature and Humidity sensor over one wire.
 //   BTN8982A Infineon Motor driver to drive two unidirectional Brushed DC motors for the peristatic pumps and current sense.
 
+#include <avr/wdt.h>
 #include "Grove_Temperature_And_Humidity_Sensor.h"
 #include "HX711.h"
 
@@ -14,10 +15,10 @@
 #include <ModbusRTUSlave.h>
 #include <SoftwareSerial.h>
 
-#define RS485_TX 8
-#define RS485_RX 9
+#define RS485_TX_PIN 8
+#define RS485_RX_PIN 9
 #define SLAVE_ADDRESS 10
-#define SLAVE_BAUD_RATE 9600
+#define SLAVE_BAUD_RATE 9600 
 #define SLAVE_SERIAL_CONFIG SERIAL_8N1
 #define DE_PIN 10   // pinsDE and RE on the MAX485 module are shorted.
 #define RELAY_PIN 4
@@ -45,25 +46,32 @@ float temp_hum_val[2] = { 0 };
 float humidity = 0.0;
 float temperature = 0.0;
 
-SoftwareSerial RS485_serial(RS485_RX, RS485_TX);  // Create a serial port with the software serial pins.
+SoftwareSerial RS485_serial(RS485_RX_PIN, RS485_TX_PIN);  // Create a serial port with the software serial pins.
 ModbusRTUSlave modbus(RS485_serial, DE_PIN);       // Create a modbus object that uses the software serial port.
 
 /*
- NOTE:
- Modbus is natively uin16_t, but TX and RX of negative integers is just intepretation with 2's complement.
- In Pymodbus we convert the uint16_t back to int16_t values.
- So: array_holding_registers and array_input_registers can hold negative numbers.
+  The array_coils[i] is used either as a state or as a trigger.
+  In some case like in set_motor_1(), it is used as a state.
+  In function get_sample_weight(), it is used as a trigger.  
+  
+  NOTE:
+  Modbus is natively uin16_t, but TX and RX of negative integers is just intepretation with 2's complement.
+  In Pymodbus we convert the uint16_t back to int16_t values.
+  So: array_holding_registers and array_input_registers can hold negative numbers.
  *** For float, we need to scale and divide to obtain a floating point value in Arduino and Python.
-*/
+  
 
+*/
 //  Coil_0  Enable module/ Emergency Power OFF
 //  Coil_1  Get humidity & Temperature
 //  Coil_2  Get sample weight (1 value, not avg) 
 //  Coil_3  Enable pump 1
 //  Coil_4  Enable pump 2
 //  Coil_5  Tare load cell
-const uint8_t num_coils = 6;                        // Number of digital outputs, W only
-bool array_coils[num_coils] = {0, 0, 0, 0, 0, 0};   // array holding all the digital outputs, W only
+//  Coil_6  Reset Slave
+
+const uint8_t num_coils = 7;                        // Number of digital outputs, W only
+bool array_coils[num_coils] = {0, 0, 0, 0, 0, 0, 0};   // array holding all the digital outputs, W only
 
 // Discrete Inputs = Digital inputs/reads, Eg: Switches
 //  Discrete_input_0  Humidity & Temperature sensor error
@@ -85,15 +93,16 @@ int16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array 
 //  Input_register_0  Humidity (RH)
 //  Input_register_1  Temperature (deg C)
 //  Input_register_2  Weight (grams)
-//  Input_register_3  Motor 1 current sense (mA)
-//  Input_register_4  Motor 2 current sense (mA)
-const uint8_t num_input_registers = 5;              // Number of input registers, R only
-int16_t array_input_registers[num_input_registers] = {0, 0, 0, 0, 0};  // Array for input registers, R only.
+//  Input_register_3  Un-tared weight(grams)
+//  Input_register_4  Motor 1 current sense (mA)
+//  Input_register_5  Motor 2 current sense (mA)
+const uint8_t num_input_registers = 6;              // Number of input registers, R only
+int16_t array_input_registers[num_input_registers] = {0, 0, 0, 0, 0, 0};  // Array for input registers, R only.
 
 void setup()
 {
   Serial.begin(9600);
-  Serial.println("Slave 10; Sample extraction module");
+  Serial.println("\nSlave 10; Sample extraction module");
   RS485_serial.begin(9600);
   modbus.begin(SLAVE_ADDRESS, SLAVE_BAUD_RATE, SLAVE_SERIAL_CONFIG);  // Slave address = 1, Baud rate = 9600, Serial parameters = 8bit, no parity, 1 stop bit.
   modbus.configureCoils(array_coils, num_coils);
@@ -106,7 +115,9 @@ void setup()
   scale.begin(pin_LOADCELL_DOUT, pin_LOADCELL_SCK);
   Serial.println("Initalised Load-Cell HX711");
   scale.set_scale(calib_factor);
-  scale.tare();  // All readings will thus be tared.
+
+  get_untared_weight(); // Get the value of the un-tared weight when the code initalises.
+  // scale.tare();  // All readings will thus be tared. This is only done from master/client
 
   // BTN8289A pins
   pinMode(pin_BTN_IN_1, OUTPUT);
@@ -134,6 +145,8 @@ void setup()
 void loop()
 {
   bool a = modbus.poll();
+  Serial.println("Modbus poll = ");
+  Serial.println(a);
 
   get_temp_hum();
 
@@ -143,7 +156,9 @@ void loop()
 
   set_motor_2(array_holding_registers[1]);
 
-  tare_load_cell();
+  //tare_load_cell();
+
+  reboot();
 }
 
 // Reading temperature or humidity takes about 250 milliseconds!
@@ -178,6 +193,15 @@ void get_temp_hum() {
   }
 }
 
+
+void get_untared_weight()
+{
+  weight = scale.get_units(1);  // Get average of 5 values
+  Serial.print("Un-tared weight (units) = ");
+  Serial.println(weight, 1);
+  array_input_registers[3] = weight * 10;
+}
+
 void get_sample_weight()
 {
   if (array_coils[2] == 1)
@@ -186,25 +210,35 @@ void get_sample_weight()
     Serial.print("Weight (units) = ");
     Serial.println(weight, 1);
     array_input_registers[2] = weight * 10;
+    array_coils[2] = 0;   // Reset the coil list value until master triggers it.
   }
 }
 
+
+void tare_load_cell()
+{
+  if (array_coils[5] == 1)
+  {
+    scale.tare();         // All readings will thus be tared.
+    array_coils[5] = 0;   // Reset it and only execute the function if the master enables it.
+  }
+}
 
 void set_motor_1(int value)
 {
   if (array_coils[3] == 1)
   {
     analogWrite(pin_BTN_IN_1, value);
-    array_input_registers[3] = analogRead(A0);    // Current sense
+    array_input_registers[4] = analogRead(A0);    // Current sense
   }
   else
   {
     analogWrite(pin_BTN_IN_1, 0);
-    array_input_registers[3] = analogRead(A0);    // Current sense
+    array_input_registers[4] = analogRead(A0);    // Current sense
   }
-
-  Serial.print("Current sense motor 1 = ");
-  Serial.println(array_input_registers[3]);
+  //
+  //  Serial.print("Current sense motor 1 = ");
+  //  Serial.println(array_input_registers[4]);
 }
 
 // Infuse
@@ -213,16 +247,16 @@ void set_motor_2(int value)
   if (array_coils[4] == 1)
   {
     analogWrite(pin_BTN_IN_2, value);
-    array_input_registers[4] = analogRead(A1);    // Current sense
+    array_input_registers[5] = analogRead(A1);    // Current sense
   }
   else
   {
     analogWrite(pin_BTN_IN_2, 0);
-    array_input_registers[4] = analogRead(A1);    // Current sense
+    array_input_registers[5] = analogRead(A1);    // Current sense
 
   }
-  Serial.print("Current sense motor 2 = ");
-  Serial.println(array_input_registers[4]);
+  //  Serial.print("Current sense motor 2 = ");
+  //  Serial.println(array_input_registers[5]);
 }
 
 // Enable the entire module by powering ON/OFF using a relay.
@@ -234,8 +268,18 @@ void enable_module()
     digitalWrite(RELAY_PIN, LOW );
 }
 
-void tare_load_cell()
-{
-  if (array_coils[5] == 1)
-    scale.tare();  // All readings will thus be tared.
+
+
+// Software reset
+// https://forum.arduino.cc/t/soft-reset-and-arduino/367284/7
+void reboot() {
+  if (array_coils[6] == 1)
+  {
+    Serial.println("Rebooting...");
+    delay(100);
+    array_coils[6] = 0;
+    wdt_disable();        // Disable watchdog to clear existing configurations
+    wdt_enable(WDTO_15MS); // Enable watchdog with a ultra-short 15ms timeout
+    while (1) {}          // Enter infinite loop to let the timer expire and force reset
+  }
 }
