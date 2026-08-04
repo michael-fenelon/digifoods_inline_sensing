@@ -1,12 +1,7 @@
 
 # import all components from the tkinter library
 from tkinter import *
-# from tkinter import filedialog
-# from tkinter.filedialog import asksaveasfile
-# from os import walk
-# from tkinter import messagebox
 import tkinter as tk
-# import tkinter.font as tkFont
 from tkinter import ttk
 import copy
 import time 
@@ -15,6 +10,8 @@ from pymodbus.client import ModbusSerialClient
 from modbus_interface import Modbus_Interface
 from watchpoints import watch
 from rs485_gui_slave import*
+from sample_bypass_module import*
+
 
 ### CAVEATS
 # modbus cannot handle floating point and negative value data. 
@@ -383,21 +380,14 @@ class SAMPLE_BYPASS():
     def wait_time(self, *args):
         pass         
 
-### MAIN ############################################################################################################################################
-def root_window_bind_callback(*args):
-    print("root_window_bind_callback()", *args)           
-
+def root_window_bind_callback():
+    print("In root_window_bind_callback():  ...")
+    
 def on_closing():
     print("destroying main window.")
     root_window.destroy()       # main
     exit()     
 
-def tab_selected(event)   :
-    pass
-
-root_window = None
-slaves_mcfg = None
-mi = None
 
 if __name__ == "__main__":
     # Create the root window
@@ -411,50 +401,13 @@ if __name__ == "__main__":
     root_window.columnconfigure( 0, weight = 1 ) # Stretch Column 0 to fit width.
     root_window.rowconfigure( 0, weight = 1 ) # Stretch row 0 to fit height. 
     root_window.resizable(width=False, height=False)         # This makes the GUI of fixed size and prevents resizing.
+    root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui.
+    root_window.lift()       # Bring window forwards
+    # root_window.attributes('-topmost', True)
+    root_window.protocol("WM_DELETE_WINDOW", on_closing)   
 
     slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves (read xlsx file)
     slaves_mcfg.get_config()
     mi = Modbus_Interface()     # Create a RS485 Modbus RTU interface with baud rate, 8N1 ...etc. 
 
-    # Notebook widget
-    notebook = ttk.Notebook(root_window)
 
-    # # Place frames for each slave.
-    slave_1 = rs485_gui_slave(window = root_window, slave_number = 3, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
-    slave_1.gen_slave_modbus_gui()
-    slave_1.canvas.grid(row = 0, column = 1, sticky = "nw",  columnspan = 1)        
-    slave_1.vbar.grid(row = 0, column = 2, sticky = "ns", columnspan = 1, rowspan = 1)  
-    
-    # slave_2 = rs485_gui_slave(window = root_window, slave_number = 2, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="light goldenrod")
-    # slave_2.gen_slave_modbus_gui()
-    # slave_2.canvas.grid(row = 0, column = 2, sticky = "nw", columnspan = 1)           
-    # slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1) 
-
-    # Tab 1 : For sample extraction from the bypass with Y strainer    
-    tab_1_sample_bypass_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
-    sample_bypass = SAMPLE_BYPASS(window = root_window, rs485_gui_slave = slave_1)    
-
-    # tab_2_sample_bypass_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
-    # sample_bypass_2 = SAMPLE_BYPASS(window  = root_window, rs485_gui_slave = slave_2)      
-
-    root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui.
-    root_window.lift()       # Bring window forwards
-    # root_window.attributes('-topmost', True)
-    root_window.protocol("WM_DELETE_WINDOW", on_closing)            # Let the window wait for any events
-
-    s = ttk.Style()
-    s.configure('TNotebook.Tab', font=('URW Gothic L','11','bold') )        # Gothic <3 :D !
-
-    notebook.add(tab_1_sample_bypass_window, text='  Sample Bypass  ')    
-    # notebook.add(tab_2_sample_bypass_window, text='  Sample Bypass  2')   
-
-    notebook.grid(row=0, column=0)
-
-    notebook.bind("<<NotebookTabChanged>>", tab_selected)       # Bind a monitor to check if we change between Tabs.
-
-    # root_window.grid_columnconfigure((0,1), weight=2, uniform="column")   # This spaces the frame equally in columns    
-
-    root_window.mainloop()       # Blocking function.        
-
-
-# DUMP

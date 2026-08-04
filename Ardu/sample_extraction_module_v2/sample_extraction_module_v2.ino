@@ -158,7 +158,7 @@ void loop()
 
   //tare_load_cell();
 
-  reboot();
+  reset_slave();
 }
 
 // Reading temperature or humidity takes about 250 milliseconds!
@@ -272,10 +272,10 @@ void enable_module()
 
 // Software reset
 // https://forum.arduino.cc/t/soft-reset-and-arduino/367284/7
-void reboot() {
+void reset_slave() {
   if (array_coils[6] == 1)
   {
-    Serial.println("Rebooting...");
+    Serial.println("Reseting slave...");
     delay(100);
     array_coils[6] = 0;
     wdt_disable();        // Disable watchdog to clear existing configurations

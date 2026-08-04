@@ -2,6 +2,10 @@
 from tkinter import *
 import tkinter as tk
 import copy
+from slaves_modbus_configuration import*
+from pymodbus.client import ModbusSerialClient
+from modbus_interface import Modbus_Interface
+from watchpoints import watch
 
 class rs485_gui_slave():
     def __init__(self, window = None, slave_number = None, modbus_interface = None, slaves_mcfg = None, color = "white"):
@@ -36,7 +40,7 @@ class rs485_gui_slave():
         self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
         self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= self.color)        
         self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                       
-        self.vbar = tk.Scrollbar(self.window, orient = 'vertical', command = self.canvas.yview)        
+        self.vbar = tk.Scrollbar(self.window, orient = 'vertical', command = self.canvas.yview, width = 30)        
         # vbar = tk.Scrollbar(self.frame, orient = 'vertical', command = self.canvas.yview)        
 
         self.canvas.config(yscrollcommand = self.vbar.set)
@@ -116,12 +120,24 @@ class rs485_gui_slave():
                 # Update holding registers with min and max allowed values
                 value = self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
                 splits = value.split(":")
-                # print("splits = ", splits)
+                print("splits = ", splits)
 
                 # print("Slave number ", self.slave_number)
                 if "range" in value:
                     self.holding_reg_min_list.append(float(splits[1]))
                     self.holding_reg_max_list.append(float(splits[2]))
+                    try:
+                        resolution = float(splits[3])
+                        print("resolution ", resolution)
+                    except:
+                        resolution = 1
+                else:
+                    self.holding_reg_min_list.append(0)
+                    self.holding_reg_max_list.append(100)
+                    resolution = 1
+
+                # print("self.holding_reg_min_list ", self.holding_reg_min_list)
+                # print("Resolution = ", resolution)
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num)] = Label(self.frame, 
@@ -153,7 +169,10 @@ class rs485_gui_slave():
                 self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target_DoubleVar"] = tk.DoubleVar()
                 self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target"] = Scale(self.frame, 
                                                                                                             variable = self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target_DoubleVar"],
-                                                                                                            from_=0, to=100,orient=HORIZONTAL, length=250, border=1, width=20)
+                                                                                                            from_=self.holding_reg_min_list[holding_reg_num],
+                                                                                                            to=self.holding_reg_max_list[holding_reg_num],
+                                                                                                            resolution= resolution,
+                                                                                                            orient=HORIZONTAL, length=250, border=1, width=20)
 
                 self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = self.row_counter + holding_reg_num * 2 + 2, column = 2, sticky = "w", pady = 2, padx= 10, columnspan = 1)                                                                                                          
             else:
@@ -310,3 +329,39 @@ class rs485_gui_slave():
         # Set the canvas scrollregion to fit the whole of frame.
         # self.canvas.configure(scrollregion=(0, 0, e.width, e.height))
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+def root_window_bind_callback():
+    print("In root_window_bind_callback():  ...")
+
+def on_closing():
+    print("destroying main window.")
+    root_window.destroy()       # main
+    exit() 
+
+if __name__ == "__main__":
+    # Create the root window
+    root_window = Tk()   
+    root_window.title('RS485 Slave')       # Set window title    
+    window_width = 1600
+    window_height = 1000
+    root_window.geometry(str(window_width) + "x" + str(window_height))     # Set window size width x height   1600x1000
+    root_window.config(background = "white")     #Set window background color  
+    root_window.columnconfigure( 0, weight = 1 ) # Stretch Column 0 to fit width.
+    root_window.rowconfigure( 0, weight = 1 ) # Stretch row 0 to fit height. 
+    root_window.resizable(width=False, height=False)         # This makes the GUI of fixed size and prevents resizing.
+    root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui.
+    root_window.lift()       # Bring window forwards
+    # root_window.attributes('-topmost', True)
+    root_window.protocol("WM_DELETE_WINDOW", on_closing)   
+
+    slaves_mcfg = Slaves_Modbus_Config()       # Get configurations of all slaves (read xlsx file)
+    slaves_mcfg.get_config()
+    mi = Modbus_Interface()     # Create a RS485 Modbus RTU interface with baud rate, 8N1 ...etc. 
+
+    slave_1 = rs485_gui_slave(window = root_window, slave_number = 2, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
+    slave_1.gen_slave_modbus_gui()
+    slave_1.canvas.grid(row = 0, column = 1, sticky = "nw",  columnspan = 1)        
+    slave_1.vbar.grid(row = 0, column = 2, sticky = "ns", columnspan = 1, rowspan = 1) 
+
+    root_window.mainloop()       # Blocking function.   
+
