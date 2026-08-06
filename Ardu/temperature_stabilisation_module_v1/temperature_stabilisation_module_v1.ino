@@ -25,8 +25,8 @@
 #define MAXCS_2   30   // Chip select pin for sensor 2
 #define MAXCS_3   36   // Chip select pin for sensor 3
 #define MAXCS_4   38   // Chip select pin for sensor 4
-#define MAXCS_5   44   // Chip select pin for sensor 5
-#define MAXCS_6   42   // Chip select pin for sensor 6
+#define MAXCS_5   42   // Chip select pin for sensor 5
+#define MAXCS_6   44   // Chip select pin for sensor 6
 Adafruit_MAX31855 thermocouple_1(MAXCLK, MAXCS_1, MAXDO);
 Adafruit_MAX31855 thermocouple_2(MAXCLK, MAXCS_2, MAXDO);
 Adafruit_MAX31855 thermocouple_3(MAXCLK, MAXCS_3, MAXDO);
@@ -93,6 +93,8 @@ void setup() {
 void loop() {
 
   bool a = modbus.poll();
+
+  /*
   digitalWrite(LED_pin, array_coils[0]);
 
   servo_1.writeMicroseconds(1000);
@@ -106,8 +108,9 @@ void loop() {
   servo_3.writeMicroseconds(2000);
   servo_4.writeMicroseconds(2000);
   delay(1000);
+  */
 
-  //  get_temperatures();
+  get_temperatures();
 
 }
 
@@ -168,7 +171,6 @@ void init_thermocouples()
 
 void get_temperatures()
 {
-
   // SENSOR 1
   c_1 = thermocouple_1.readCelsius();
   if (isnan(c_1)) {
@@ -244,6 +246,7 @@ void get_temperatures()
     Serial.print(",");    // separator for serial plotter
   }
 
+
   // SENSOR 6
   c_6 = thermocouple_6.readCelsius();
   if (isnan(c_6)) {
@@ -257,5 +260,5 @@ void get_temperatures()
     // Serial.print("Sensor 6 ");
     Serial.println(c_6);
     //    Serial.print(",");    // separator for serial plotter
-  }
+  }   
 }

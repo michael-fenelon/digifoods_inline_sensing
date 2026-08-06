@@ -26,9 +26,9 @@
 #define MAXCS_2 30 // Chip select pin for sensor 2
 #define MAXCS_3 36 // Chip select pin for sensor 3
 #define MAXCS_4 38 // Chip select pin for sensor 4
-#define MAXCS_5 44 // Chip select pin for sensor 5
-#define MAXCS_6 42 // Chip select pin for sensor 6
-Adafruit_MAX31855 thermocouple_1(MAXCLK, 3, MAXDO);
+#define MAXCS_5 42 // Chip select pin for sensor 5
+#define MAXCS_6 44 // Chip select pin for sensor 6
+Adafruit_MAX31855 thermocouple_1(MAXCLK, MAXCS_1, MAXDO);
 Adafruit_MAX31855 thermocouple_2(MAXCLK, MAXCS_2, MAXDO);
 Adafruit_MAX31855 thermocouple_3(MAXCLK, MAXCS_3, MAXDO);
 Adafruit_MAX31855 thermocouple_4(MAXCLK, MAXCS_4, MAXDO);
@@ -51,46 +51,57 @@ Servo servo_4;
 Servo servo_5;
 Servo servo_6;
 
-int16_t servo_1_status = 0;
-int16_t servo_2_status = 0;
-int16_t servo_3_status = 0;
-int16_t servo_4_status = 0;
-int16_t servo_5_status = 0;
-int16_t servo_6_status = 0;
+// command position of each servo.
+uint16_t servo_1_cmd_pos = 0;
+uint16_t servo_2_cmd_pos = 0;
+uint16_t servo_3_cmd_pos = 0;
+uint16_t servo_4_cmd_pos = 0;
+uint16_t servo_5_cmd_pos = 0;
+uint16_t servo_6_cmd_pos = 0;
+
+// Current position of each servo.
+uint16_t servo_1_cur_pos = 0;
+uint16_t servo_2_cur_pos = 0;
+uint16_t servo_3_cur_pos = 0;
+uint16_t servo_4_cur_pos = 0;
+uint16_t servo_5_cur_pos = 0;
+uint16_t servo_6_cur_pos = 0;
 
 ModbusRTUSlave modbus(Serial3, DE_PIN); // Create a modbus object that uses the software serial port.
 
 //  Coils = Digital outputs/writes, Eg: LED, Relays
-//  Coil_0  Enable module/ Emergency Power OFF 
+//  Coil_0  Enable module/ Emergency Power OFF
 //  Coil_1  Water relay ON/OFF
 //  Coil_2  Get valve positions
 //  Coil_3  Set valve positions
 //  Coil_4  Get temperatures
 //  Coil_5  Reset Slave
-const uint8_t num_coils = 6;          // Number of digital outputs, W only
-bool array_coils[num_coils] = {0,0,0,0,0,0}; // array holding all the digital outputs, W only
+//NOTE: The array size from python and arduino needs to be identical, if not the array_* will not update and will remain with 0s
+const uint8_t num_coils = 6;                      // Number of digital outputs, W only
+bool array_coils[num_coils] = {0, 0, 0, 0, 0, 0}; // array holding all the digital outputs, W only
 
 // Discrete Inputs = Digital inputs/reads, Eg: Switches
+//NOTE: The array size from python and arduino needs to be identical, if not the array_* will not update and will remain with 0s
 const uint8_t num_discrete_inputs = 1; // Number of digital inputs, R only
 bool array_discrete_inputs[num_discrete_inputs] = {false};
 
 //  Holding registers = 16bit variable values, R+W
 //  Holding_register_0  NA
-//  Holding_register_1  Set valve 1 position, range:1:2
-//  Holding_register_2  Set valve 2 position, range:1:2
-//  Holding_register_3  Set valve 3 position, range:1:2
-//  Holding_register_4  Set valve 4 position, range:1:2
-//  Holding_register_5  Set valve 5 position, range:1:2
-//  Holding_register_6  Set valve 6 position, range:1:2
-//  Holding_register_7  Set Temper
-//  Holding_register_8  NA
-//  Holding_register_9  NA
-//  Holding_register_10 NA
+//  Holding_register_1  Set valve 1 (A) position, pulse:900:1900
+//  Holding_register_2  Set valve 2 (B) position, pulse:900:1900
+//  Holding_register_3  Set valve 3 (A) position, pulse:900:1900
+//  Holding_register_4  Set valve 4 (B) position, pulse:900:1900
+//  Holding_register_5  Set valve 5 position, pulse:900:1900
+//  Holding_register_6  Set valve 6 position, pulse:900:1900
+//  Holding_register_7  Set water cut off temperature, range:20:50:0.1
+//  Holding_register_8  Set sample cut off temperature, range:20:50:0.1
+//  Holding_register_9  Set water pump, range:0:100
+//  Holding_register_10 Set sample pump, range:0:100
 //  Holding_register_11 NA
 //  Holding_register_12 NA
-
-const uint8_t num_holding_registers = 12;                 // Number of holding registers, R + W
-uint16_t array_holding_registers[num_holding_registers] = {0,0,0,0,0,0,0,0,0,0,0,0};  // Array holding N holding registers. R+W
+//NOTE: The array size from python and arduino needs to be identical, if not the array_* will not update and will remain with 0s
+const uint8_t num_holding_registers = 13;               // Number of holding registers, R + W
+int16_t array_holding_registers[num_holding_registers]; //= {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Array holding N holding registers. R+W
 
 //  Input_registers = 16bit variable values, R only.
 //  Input_register_0  NA
@@ -106,16 +117,15 @@ uint16_t array_holding_registers[num_holding_registers] = {0,0,0,0,0,0,0,0,0,0,0
 //  Input_register_10 Temperature 4 :
 //  Input_register_11 Temperature 5 :
 //  Input_register_12 Temperature 6 :
-const uint8_t num_input_registers = 13;               // Number of input registers, R only
-uint16_t array_input_registers[num_input_registers]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}; // Array for input registers, R only.
+//NOTE: The array size from python and arduino needs to be identical, if not the array_* will not update and will remain with 0s
+const uint8_t num_input_registers = 13;                                                                    // Number of input registers, R only
+int16_t array_input_registers[num_input_registers] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // Array for input registers, R only.
 
 void setup()
 {
   // Default serial comm for debugging
   Serial.begin(9600);
   Serial.println("Temperature stabilisation module");
-
-  pinMode(LED_pin, OUTPUT);
 
   servo_1.attach(8);
   servo_2.attach(9);
@@ -124,8 +134,6 @@ void setup()
   servo_5.attach(12);
   servo_6.attach(13);
 
-  // pinMode()
-
   // Using Serial 3 for RS485 communication
   Serial3.begin(9600);
   modbus.begin(SLAVE_ADDRESS, SLAVE_BAUD_RATE, SLAVE_SERIAL_CONFIG); // Slave address = 1, Baud rate = 9600, Serial parameters = 8bit, no parity, 1 stop bit.
@@ -133,23 +141,66 @@ void setup()
   modbus.configureDiscreteInputs(array_discrete_inputs, num_discrete_inputs);
   modbus.configureHoldingRegisters(array_holding_registers, num_holding_registers);
   modbus.configureInputRegisters(array_input_registers, num_input_registers);
- 
-  //init_thermocouples();
+
+  init_thermocouples();
   Serial.println("Init completed");
 }
 
 void loop()
 {
   bool a = modbus.poll();
-  //Serial.println(a);  // debug
+  // Serial.println(a);  // debug
 
-  get_valve_positions();
+  //get_valve_positions();
 
-  set_valve_positions();  
+  set_valve_positions();
 
   get_temperatures();
 
-  reset_slave();
+  //reset_slave();
+
+  //print_array_coils();
+  //print_array_discrete_inputs();
+  //print_array_holding_registers();
+  //print_array_input_registers();
+}
+
+// Debug prints for registers.
+void print_array_coils()
+{
+  Serial.println("Coils: array_coils");
+  for (int i = 0; i <= num_coils; i++)
+  {
+    Serial.println(array_coils[i]);
+  }
+}
+
+void print_array_discrete_inputs()
+{
+  Serial.println("Discrete inputs: array_discrete_inputs");
+  for (int i = 0; i <= num_discrete_inputs; i++)
+  {
+    Serial.println(array_discrete_inputs[i]);
+  }
+}
+
+void print_array_holding_registers()
+{
+  Serial.println("Holding registers: array_holding_registers");
+  for (int i = 0; i <= num_holding_registers; i++)
+  {
+    Serial.println(array_holding_registers[i]);
+  }
+}
+
+
+void print_array_input_registers()
+{
+  Serial.println("Input registers: array_input_registers");
+  for (int i = 0; i <= num_input_registers; i++)
+  {
+    Serial.println(array_input_registers[i]);
+  }
 }
 
 // Get status of valves.
@@ -159,89 +210,29 @@ void get_valve_positions()
   if (array_coils[2] == 1)
   {
     array_coils[2] = 0; // Reset the flag until master changes the value.
-    servo_1_status = analogRead(A0);
-    servo_2_status = analogRead(A1);
-    servo_3_status = analogRead(A2);
-    servo_4_status = analogRead(A3);
-    servo_5_status = analogRead(A4);
-    servo_6_status = analogRead(A5);
+    servo_1_cur_pos = analogRead(A0);
+    servo_2_cur_pos = analogRead(A1);
+    servo_3_cur_pos = analogRead(A2);
+    servo_4_cur_pos = analogRead(A3);
+    servo_5_cur_pos = analogRead(A4);
+    servo_6_cur_pos = analogRead(A5);
   }
 }
-
 
 void set_valve_positions()
 {
   if (array_coils[3] == 1)
   {
-    array_coils[3] = 0; // Reset the flag until master changes the value.
+    servo_1.writeMicroseconds(array_holding_registers[1]);
+    servo_2.writeMicroseconds(array_holding_registers[2]);
+    servo_3.writeMicroseconds(array_holding_registers[3]);
+    servo_4.writeMicroseconds(array_holding_registers[4]);
+    //servo_5.writeMicroseconds(array_holding_registers[5]);
+    //servo_6.writeMicroseconds(array_holding_registers[6]);
 
-    // Valve 1
-    if (array_holding_registers[1] == 1)
-    {
-      servo_1.writeMicroseconds(1000);
-    }
-    else if (array_holding_registers[1] == 2)
-    {
-      servo_1.writeMicroseconds(2000);
-    }
-
-    // Valve 2
-    if (array_holding_registers[2] == 1)
-    {
-      servo_2.writeMicroseconds(1000);
-    }
-    else if (array_holding_registers[2] == 2)
-    {
-      servo_2.writeMicroseconds(2000);
-    }
-
-    // Valve 3
-    if (array_holding_registers[3] == 1)
-    {
-      servo_3.writeMicroseconds(1000);
-    }
-    else if (array_holding_registers[3] == 2)
-    {
-      servo_3.writeMicroseconds(2000);
-    }
-
-    // Valve 4
-    if (array_holding_registers[4] == 1)
-    {
-      servo_4.writeMicroseconds(1000);
-    }
-    else if (array_holding_registers[4] == 2)
-    {
-      servo_4.writeMicroseconds(2000);
-    }
-
-    // Valve 5
-    if (array_holding_registers[5] == 1)
-    {
-      servo_5.writeMicroseconds(1000);
-    }
-    else if (array_holding_registers[5] == 2)
-    {
-      servo_5.writeMicroseconds(2000);
-    }
-
-    // Valve 6
-    if (array_holding_registers[6] == 1)
-    {
-      servo_6.writeMicroseconds(1000);
-    }
-    else if (array_holding_registers[6] == 2)
-    {
-      servo_6.writeMicroseconds(2000);
-    }
+    //delay(500);
+    //array_coils[3] = 0; // Reset the flag until master changes the value. This seems to cause the servos to only move every 2nd iteration.
   }
-
-  /*
-  for(int i = 1, i<7, i++ )
-  {
-      int value = 1000 * array_holding_registers[i];
-      servo_1.writeMicroseconds(value);
-  }*/
 }
 
 void init_thermocouples()
@@ -312,7 +303,7 @@ void init_thermocouples()
 
 void get_temperatures()
 {
-  if (array_coils[4] = 0)
+  if (array_coils[4] == 1)
   {
     array_coils[4] = 0; // Reset the flag until master changes the value.
     // SENSOR 1
@@ -330,9 +321,8 @@ void get_temperatures()
     }
     else
     {
-      Serial.print("C = ");
       Serial.print("Sensor 1 ");
-      array_holding_registers[1] = c_1 * 10;
+      array_input_registers[7] = c_1 * 10;
       Serial.print(c_1);
       Serial.print(","); // separator for serial plotter
     }
@@ -352,9 +342,8 @@ void get_temperatures()
     }
     else
     {
-      Serial.print("C = ");
       Serial.print("Sensor 2 ");
-      array_holding_registers[2] = c_2 * 10;
+      array_input_registers[8] = c_2 * 10;
       Serial.print(c_2);
       Serial.print(","); // separator for serial plotter
     }
@@ -374,9 +363,8 @@ void get_temperatures()
     }
     else
     {
-      Serial.print("C = ");
       Serial.print("Sensor 3 ");
-      array_holding_registers[3] = c_3 * 10;
+      array_input_registers[9] = c_3 * 10;
       Serial.print(c_3);
       Serial.print(","); // separator for serial plotter
     }
@@ -396,9 +384,8 @@ void get_temperatures()
     }
     else
     {
-      Serial.print("C = ");
       Serial.print("Sensor 4 ");
-      array_holding_registers[4] = c_4 * 10;
+      array_input_registers[10] = c_4 * 10;
       Serial.print(c_4);
       Serial.print(","); // separator for serial plotter
     }
@@ -418,9 +405,8 @@ void get_temperatures()
     }
     else
     {
-      Serial.print("C = ");
       Serial.print("Sensor 5 ");
-      array_holding_registers[5] = c_5 * 10;
+      array_input_registers[11] = c_5 * 10;
       Serial.print(c_5);
       Serial.print(","); // separator for serial plotter
     }
@@ -440,26 +426,105 @@ void get_temperatures()
     }
     else
     {
-      Serial.print("C = ");
       Serial.print("Sensor 6 ");
-      array_holding_registers[6] = c_6 * 10;
+      array_input_registers[12] = c_6 * 10;
       Serial.println(c_6);
       //    Serial.print(",");    // separator for serial plotter
     }
   }
 }
 
-
 // Software reset
 // https://forum.arduino.cc/t/soft-reset-and-arduino/367284/7
-void reset_slave() {
+void reset_slave()
+{
   if (array_coils[5] == 1)
   {
     Serial.println("Reseting slave...");
     delay(100);
     array_coils[5] = 0;
-    wdt_disable();        // Disable watchdog to clear existing configurations
+    wdt_disable();         // Disable watchdog to clear existing configurations
     wdt_enable(WDTO_15MS); // Enable watchdog with a ultra-short 15ms timeout
-    while (1) {}          // Enter infinite loop to let the timer expire and force reset
+    while (1)
+    {
+    } // Enter infinite loop to let the timer expire and force reset
   }
 }
+
+// DUMP
+/*
+  void set_valve_positions()
+  {
+  if (array_coils[3] == 1)
+  {
+    array_coils[3] = 0; // Reset the flag until master changes the value.
+
+    // Valve 1
+    if (array_holding_registers[1] == 1)
+    {
+      servo_1.writeMicroseconds(1000);
+    }
+    else if (array_holding_registers[1] == 2)
+    {
+      servo_1.writeMicroseconds(2000);
+    }
+
+    // Valve 2
+    if (array_holding_registers[2] == 1)
+    {
+      servo_2.writeMicroseconds(1000);
+    }
+    else if (array_holding_registers[2] == 2)
+    {
+      servo_2.writeMicroseconds(2000);
+    }
+
+    // Valve 3
+    if (array_holding_registers[3] == 1)
+    {
+      servo_3.writeMicroseconds(1000);
+    }
+    else if (array_holding_registers[3] == 2)
+    {
+      servo_3.writeMicroseconds(2000);
+    }
+
+    // Valve 4
+    if (array_holding_registers[4] == 1)
+    {
+      servo_4.writeMicroseconds(1000);
+    }
+    else if (array_holding_registers[4] == 2)
+    {
+      servo_4.writeMicroseconds(2000);
+    }
+
+    // Valve 5
+    if (array_holding_registers[5] == 1)
+    {
+      servo_5.writeMicroseconds(1000);
+    }
+    else if (array_holding_registers[5] == 2)
+    {
+      servo_5.writeMicroseconds(2000);
+    }
+
+    // Valve 6
+    if (array_holding_registers[6] == 1)
+    {
+      servo_6.writeMicroseconds(1000);
+    }
+    else if (array_holding_registers[6] == 2)
+    {
+      servo_6.writeMicroseconds(2000);
+    }
+  }
+
+
+  //for(int i = 1, i<7, i++ )
+  //{
+    //  int value = 1000 * array_holding_registers[i];
+      //servo_1.writeMicroseconds(value);
+  //}
+  }
+*/

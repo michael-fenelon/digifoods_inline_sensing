@@ -42,19 +42,30 @@ SoftwareSerial RS485_serial(RS485_RX, RS485_TX);  // Create a serial port with t
 ModbusRTUSlave modbus(RS485_serial, dePin);       // Create a modbus object that uses the software serial port.
 
 // Coils = Digital outputs/writes, Eg: LED, Relays
-const uint8_t num_coils = 4;                        // Number of digital outputs, W only
-bool array_coils[num_coils] = {0, 0};                             // array holding all the digital outputs, W only
+//  Coil_0  Enable Module
+//  Coil_1  Enable M1 brake
+//  Coil_2  Enable M2 brake
+const uint8_t num_coils = 3;                        // Number of digital outputs, W only
+bool array_coils[num_coils] = {0, 0, 0};                             // array holding all the digital outputs, W only
 
 // Discrete Inputs = Digital inputs/reads, Eg: Switches
+//  Discrete_input_0  Fault for M1 ?
+//  Discrete_input_1  Fault for M2 ?
 const uint8_t num_discrete_inputs = 2;              // Number of digital inputs, R only
 bool array_discrete_inputs[num_discrete_inputs] = {false, false};
 
 // Holding registers = 16bit variable values, R+W
+//Holding_register_0  Set M1 speed, range:-100:100
+//Holding_register_1  Set M2 speed, range:-100:100
+//Holding_register_2  Set M1 brake, range:0:100
+//Holding_register_3  Set M2 brake, range:0:100
 const uint8_t num_holding_registers = 4;            // Number of holding registers, R + W
 uint16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array holding N holding registers. R+W
 // The brakes are NOT ON/OFF but are from 0 to 400, so we use a holding register to implement brakes
 
 // Input_registers = 16bit variable values, R only.
+//  Input_register_0  M1 current (mA)
+//  Input_register_1  M2 current (mA)
 const uint8_t num_input_registers = 2;              // Number of input registers, R only
 uint16_t array_input_registers[num_input_registers];      // Array for input registers, R only.
 
@@ -99,8 +110,6 @@ void loop()
   // Get faults if any
   array_discrete_inputs[0] = md.getM1Fault();
   array_discrete_inputs[1] = md.getM2Fault();
-
-
 
   // Update input registers for client to read
   // Get current draw from motors.

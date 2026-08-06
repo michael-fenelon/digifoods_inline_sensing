@@ -85,7 +85,7 @@ class rs485_gui_slave():
                                                                                             offvalue = 0)                                                                                            
                 self.gui_dict['Check_dict']['Coil_' + str(coil_num)].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                                      
             else:
-                print("No more coils !")
+                print("Completed coil list !")
                 break
 
         # print("coils_list ", self.coils_list)
@@ -108,6 +108,9 @@ class rs485_gui_slave():
                                                                                                     text = "False", 
                                                                                                     bg = self.color, fg="orange" , wraplength = self.canvas_width - 10)
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 2)                
+            else:
+                print("Completed discrete input list !")
+                break
 
         # Holding registers, read upto 100 holding registers. Read + Write.
         for holding_reg_num in range(0, 100):
@@ -120,15 +123,15 @@ class rs485_gui_slave():
                 # Update holding registers with min and max allowed values
                 value = self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
                 splits = value.split(":")
-                print("splits = ", splits)
+                # print("splits = ", splits)
 
                 # print("Slave number ", self.slave_number)
-                if "range" in value:
+                if "range" in value or "pulse" in value:
                     self.holding_reg_min_list.append(float(splits[1]))
                     self.holding_reg_max_list.append(float(splits[2]))
                     try:
                         resolution = float(splits[3])
-                        print("resolution ", resolution)
+                        # print("resolution ", resolution)
                     except:
                         resolution = 1
                 else:
@@ -176,12 +179,12 @@ class rs485_gui_slave():
 
                 self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target"].grid(row = self.row_counter + holding_reg_num * 2 + 2, column = 2, sticky = "w", pady = 2, padx= 10, columnspan = 1)                                                                                                          
             else:
-                print("No more holding_registers !")
+                print("Completed holding_registers list !")
                 break
 
         self.row_counter = self.row_counter + holding_reg_num * 2 + 2
-        print("Holding register min list ", self.holding_reg_min_list)
-        print("Holding register max list ", self.holding_reg_max_list)
+        # print("Holding register min list ", self.holding_reg_min_list)
+        # print("Holding register max list ", self.holding_reg_max_list)
 
         # # Input registers, read upto 100 Input registers. Read only
         for input_reg_num in range(0, 100):
@@ -193,7 +196,7 @@ class rs485_gui_slave():
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)] = Label(self.frame, 
-                                                                                                    text = "Input_register " + str(input_reg_num) + ": " + self.slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Input_register_" + str(input_reg_num)] + "  ,", 
+                                                                                                    text = "Input_register " + str(input_reg_num) + ": " + self.slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Input_register_" + str(input_reg_num)], 
                                                                                                     bg = self.color, wraplength = self.canvas_width - 10)
 
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)].grid(row = self.row_counter, column = 0, sticky = "w", pady = 2, columnspan = 2)
@@ -212,7 +215,7 @@ class rs485_gui_slave():
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].grid(row = self.row_counter, column = 2, sticky = "w", pady = 2, columnspan = 1)
 
             else:
-                print("No more input_registers !")
+                print("Completed input_registers list !")
                 break
 
         # Update button: Large vertical button used and command/callback to read all the holding register entries, update the holding_reg_list and send value to the slave.
@@ -220,11 +223,13 @@ class rs485_gui_slave():
         self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "update", command = self.update_slave_via_gui, wraplength = 50) 
         self.gui_dict['Button_dict']['update'].grid(row = 4, column = 3, sticky = "nse", pady = 2, columnspan = 1, rowspan = self.row_counter)
 
-    # Callback that gets all the values from the coil Checkboxes, Scale/Slider, Entry boxes and update the values in the slave. Does sanity check for each entry and update the holding_reg.    
+    # Callback that gets all the values from the coil Checkboxes, Scale/Slider, Entry boxes and update the values in the slave. 
+    # Does sanity check for each entry and update the holding_reg.    
     def update_slave_via_gui(self):
+        print("\nIn update_slave_via_gui() Updating Slave ", self.slave_number)
+
         # UPDATE COILS: Write switches/status/ON/OFF to slave, values are bool: True/False
-        # Get the values of all check boxes and update self.coil_list
-        print("\nIn update_slave_via_gui() Updating coils for Slave ", self.slave_number)
+        # Get the values of all check boxes and update self.coil_list        
         for i in range(0, len(self.coils_list)):
             value = self.gui_dict['Check_dict']['Coil_' + str(i) + "_var"].get()
             self.coils_list[i] = value        # Update the coil_list
@@ -242,8 +247,7 @@ class rs485_gui_slave():
             self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
         print("In update_slave_via_gui(): discrete_inputs_list ",self.discrete_inputs_list )
 
-        # UPDATE HOLDING REGISTERS. Registers contain int16_t values. 
-        print("\nIn update_slave_via_gui(): Updating holding registers for Slave ", self.slave_number)
+        # UPDATE HOLDING REGISTERS. Registers contain int16_t values.                 
         for holding_reg_num in range(0, len(self.holding_reg_list)):
             user_entry = self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target_DoubleVar"].get()   # This is a float value         
             value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
@@ -252,10 +256,10 @@ class rs485_gui_slave():
             self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))  
 
         # Write data to holding registers: Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list. 
-        self.holding_reg_list = self.mi.client.convert_to_registers(value=self.holding_reg_list, data_type=self.mi.client.DATATYPE.INT16, word_order="little")        
+        self.holding_reg_list = copy.deepcopy(self.mi.client.convert_to_registers(value=self.holding_reg_list, data_type=self.mi.client.DATATYPE.INT16, word_order="little") )       
         res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)      # Send values to slave/device
         # print("In update_slave_via_gui(): write_registers : ", res)
-        print("In update_slave_via_gui(): Holding_reg_list ", self.holding_reg_list)
+        print("In update_slave_via_gui(): Holding_reg_list", self.holding_reg_list)
 
         # UPDATE INPUT REGISTERS: Read from slave and populate the GUI. Registers contain int16_t values. 
         # Read data: Convert from Arduino's INT16_T list -> Pymodbus's default UINT16 list -> Actual INT16 list
@@ -269,6 +273,8 @@ class rs485_gui_slave():
 
         self.window.update()    # Update the GUI with latest values.
 
+    # Update the slave via the values in the *_reg_list. 
+    # Don't care for values in the gui.
     def update_slave_via_reg_list(self):
         # UPDATE COILS: Write switches/status/ON/OFF to slave, values are bool: True/False. 
         print("\nIn update_slave_via_reg_list(): Updated Coil list ", self.coils_list, ", length of coil_list = ", len(self.coils_list))        
@@ -300,7 +306,7 @@ class rs485_gui_slave():
         self.window.update()        
         
     # Function that read the coils_list, discrete_input_list, holding_reg_list, input_register_list and updates the GUI.
-    # This is required when an external control directly manipulates the ###_reg_lists instead of changing the gui's widgets
+    # This is required when an external control directly manipulates the *_reg_lists instead of changing the gui's widgets
     def update_gui(self):
         # Read coil_list and update gui
         for coil_num in range(0, len(self.coils_list)):
