@@ -70,7 +70,7 @@ if __name__ == "__main__":
     slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)
     
     pumps_slave = rs485_gui_slave(window = tab_2_tsm_window, slave_number = 1, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white")
-    pumps_slave.gen_slave_modbus_gui()
+    # pumps_slave.gen_slave_modbus_gui()
     # pumps_slave.canvas.grid(row = 1, column = 2, sticky = "nw", columnspan = 1)           
     # pumps_slave.vbar.grid(row = 1, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)    
     tsm = Temperature_stabilisation_module(window = tab_2_tsm_window, rs485_gui_slave = slave_2, pumps_slave = pumps_slave)    

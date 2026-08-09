@@ -35,6 +35,8 @@ class SAMPLE_BYPASS():
         self.color = "#d9d9d9"    # Deafult gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_sample_bypass'].cget("bg"))              
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Scale_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{}, 'Scale_dict':{} }
         self.gen_sample_bypass_gui()   
+        self.humidity_temperature()             # Run this function and update the GUI, to show some values at startup.
+        self.sample_bypass_get_sample_weight()  # Run this function and update the GUI, to show some values at startup.
         self.current_weight = 0.0
         self.untared_weight = 0.0
         self.tared_weight = 0.0
@@ -163,6 +165,10 @@ class SAMPLE_BYPASS():
         self.gui_dict['Label_dict']['reset_slave'].grid(row = 17, column = 0, sticky = "nw", pady = 2, columnspan = 1)
         print("Complete gen_gui()")
 
+        self.gui_dict['Button_dict']['tare'].config(state = 'disabled')
+        self.gui_dict['Scale_dict']['set_pump_1_rpm'].set(100)
+        self.gui_dict['Scale_dict']['set_pump_2_rpm'].set(100)
+
     # Send a software reset trigger to the slave. Arduino resets the value: the coils_list[6] = 0. 
     def sample_bypass_reset_slave(self):        
         self.rs485_gui_slave.coils_list[6] = 1                        
@@ -224,8 +230,9 @@ class SAMPLE_BYPASS():
                 time_stop = copy.deepcopy(time.time())   # Get present time
                 self.sample_bypass_get_sample_weight()                     
 
-                # Check if current weight is greater than or equal to target weight to switch off the pump. 
-                if target_weight <= self.current_weight:
+                # Check if current weight is greater than or equal to target weight to switch off the pump, if so we turn OFF the pump
+                # We constantly also check if the user unchecks the box during process; suggesting the process to stop.
+                if target_weight <= self.current_weight or self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'].get() == 0:
                     print("In sample_bypass_withdraw(): Sample target weight withdrawn.")
                     print("In sample_bypass_withdraw(): Turning pump 1 OFF.")
                     self.rs485_gui_slave.coils_list[3] = 0              # Pump 1 enable set to OFF,                          
@@ -235,7 +242,7 @@ class SAMPLE_BYPASS():
                     self.gui_dict['Label_dict']['set_pump_1_status'].configure(text="Pump 1 OFF", bg="orange")
                     self.gui_dict['Label_dict']['withdraw_status'].config(text="Completed", bg="light green")
                     break
-                # Else, we update progress bar, and monitor the current weight.
+                # Else, we turn ON pump, update progress bar, and monitor the current weight.
                 else:
                     # Enable the pump to withdraw with a user entered RPM in realtime          
                     pump_1_rpm = int(self.gui_dict['Scale_dict']['set_pump_1_rpm_DoubleVar'].get())      # Returns a float value from slider, we convert to int for holding reg
@@ -246,12 +253,12 @@ class SAMPLE_BYPASS():
                     self.gui_dict['Label_dict']['set_pump_1_status'].configure(text="Pump 1 ON", bg="green")                                     
                     self.gui_dict['Progress_bar']['withdraw_progress']['value'] = int((self.current_weight/target_weight) * 100) # weight progress
                     # self.gui_dict['Progress_bar']['withdraw_progress']['value'] = int((time_stop - time_start) * 10)     # dummy / debug to see the progress bar move for time's progress
-
-                # Break out of the loop after 10 seconds
+                
                 # At 100% RPM with 12V adapter, the pump can withdraw sample in about 25 seconds, so we set a timeout for 30 seconds. 
                 # The timeout needs to be proportional to the target volume.
                 # assumption: 100ml can be withdrawn in about 30seconds, thus x ml would take 20 * x ml/100. leeway of 2 seconds 
-                if (time_stop - time_start) >= int(target_weight * 32/100):
+                # We constantly also check if the user unchecks the box during process; suggesting the process to stop.
+                if (time_stop - time_start) >= int(target_weight * 32/100) or self.gui_dict['Check_dict']['start_stop_withdraw_IntVar'].get() == 0:
                     print("In sample_bypass_withdraw(): Sample withdrawal timeout !")
                     print("In sample_bypass_withdraw(): Turning pump 1 OFF.")
                     self.rs485_gui_slave.coils_list[3] = 0              # Pump 1 enable set to OFF,                          
@@ -313,8 +320,9 @@ class SAMPLE_BYPASS():
                     self.rs485_gui_slave.update_slave_via_reg_list()     # Update slave
                     self.gui_dict['Label_dict']['set_pump_2_status'].configure(text="Pump 2 ON", bg="green")                                        
 
-                    # We check if the infused weight 
-                    if target_weight <= infused_weight:
+                    # We check if the infused weight approaches the target weight, if so we turn OFF the pump. 
+                    # We constantly also check if the user unchecks the box during process; suggesting the process to stop.
+                    if target_weight <= infused_weight or self.gui_dict['Check_dict']['start_stop_infuse_IntVar'].get() == 0:
                         print("In sample_bypass_infuse(): Sample target weight infuse.")
                         print("In sample_bypass_infuse(): Turning Pump 2 OFF.")
                         self.rs485_gui_slave.coils_list[4] = 0              # Pump 2 enable set to OFF,                          
@@ -330,8 +338,11 @@ class SAMPLE_BYPASS():
                         self.gui_dict['Progress_bar']['infuse_progress']['value'] = int(target_weight - infused_weight)      # infuse progress
                         # self.gui_dict['Progress_bar']['infuse_progress']['value'] = int((infused_weight/target_weight) * 100) # weight progress
 
-                    # Break out of the loop after 10 seconds
-                    if (time_stop - time_start) >= int(target_weight * 32/100):
+                    # At 100% RPM with 12V adapter, the pump can withdraw sample in about 25 seconds, so we set a timeout for 30 seconds. 
+                    # The timeout needs to be proportional to the target volume.
+                    # assumption: 100ml can be withdrawn in about 30seconds, thus x ml would take 20 * x ml/100. leeway of 2 seconds 
+                    # We constantly also check if the user unchecks the box during process; suggesting the process to stop.                                        
+                    if (time_stop - time_start) >= int(target_weight * 32/100) or self.gui_dict['Check_dict']['start_stop_infuse_IntVar'].get() == 0:
                         print("In sample_bypass_infuse(): Sample infuse timeout !")
                         print("In sample_bypass_infuse(): Turning Pump 2 OFF.")
                         self.rs485_gui_slave.coils_list[4] = 0              # Pump 2 enable set to OFF,                          

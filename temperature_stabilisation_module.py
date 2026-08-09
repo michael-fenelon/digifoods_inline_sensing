@@ -67,6 +67,8 @@ class Temperature_stabilisation_module():
                                                                     orient = HORIZONTAL, length = 350, border = 1, width = 20)               
        
         # relays ?
+
+        
         
         # Place all the widgets on the self.frame.
         self.canvas.grid(row = 0, column = 0, sticky = "nw", padx = 5, pady = 50)
@@ -102,27 +104,54 @@ class Temperature_stabilisation_module():
         self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "update", command = self.update, wraplength = 50) 
         self.gui_dict['Button_dict']['update'].grid(row = 4, column = 3, sticky = "nse", pady = 2, columnspan = 1, rowspan = self.row_counter)
 
+    # Possible functions.
+    # withdraw sample
+    # recirculate sample
+    # infuse sample into flowcell    
+    
+    # withdraw water
+    # recirculate water.
+    # infuse water into flow cell.
+
+    def process_sample(self, action = None):
+        #action = "withdraw" or "recirculate" 
+        # We set the slider positions in the gui and call self.tsm_set_valve_positions()
+        if action == "withdraw":
+            self.gui_dict['Scale_dict']['set_servo_valve_1_IntVar'].set(1) 
+            self.gui_dict['Scale_dict']['set_servo_valve_2_IntVar'].set(1) 
+        elif action == "recirculate":
+            self.gui_dict['Scale_dict']['set_servo_valve_1_IntVar'].set(2) 
+            self.gui_dict['Scale_dict']['set_servo_valve_2_IntVar'].set(2)             
+
+        self.tsm_set_valve_positions()
+
+
     def tsm_enable(self):
         print("In tsm_enable(): ...")        
 
     def tsm_start(self):
         print("In tsm_start(): ...")       
 
-    def tsm_get_valve_positions(self):
-        self.rs485_gui_slave.coil_list[2] = 1
-        self.rs485_gui_slave.update_slave_via_reg_list()
-        self.rs485_gui_slave.update_gui()    
+    # Function doesn't exist in Arduino slave
+    # def tsm_get_valve_positions(self):
+    #     self.rs485_gui_slave.coil_list[2] = 1
+    #     self.rs485_gui_slave.update_slave_via_reg_list()
+    #     self.rs485_gui_slave.update_gui()    
         
-    def tsm_set_valve_positions(self):        
-
+    def tsm_set_valve_positions(self):   
         for num_servo_valve in range(1,7):
-            value = self.gui_dict['Scale_dict']['set_servo_valve_' + str(num_servo_valve) + '_IntVar'].get()
+            value = self.gui_dict['Scale_dict']['set_servo_valve_' + str(num_servo_valve) + '_IntVar'].get()    # Get value from slider for respective valve.
             # print("In tsm_set_valve_positions ", value, type(value))
 
+            # When the value = 1, we need the servo to be at ~900microseconds. 
+            # When the value = 2, we need the servo to be at ~1900microseconds. 
+            # Since each servo is different, the servo horn will not align to the ON/OFF of a valve. 
+            # Thus we have a min and max value at which the servo horn visually aligns with ON/OFF positions of the valve.
+            # These positions are store in XLSX file for each servo and is also in the holding_reg_min_list and holding_reg_max_list. 
             if value == 1:
-                self.rs485_gui_slave.holding_reg_list[num_servo_valve] = copy.deepcopy(int(self.rs485_gui_slave.holding_reg_min_list[num_servo_valve]))
+                self.rs485_gui_slave.holding_reg_list[num_servo_valve] = copy.deepcopy(int(self.rs485_gui_slave.holding_reg_min_list[num_servo_valve])) # assign ~900 from the min list to command a servo.
             elif value == 2:
-                self.rs485_gui_slave.holding_reg_list[num_servo_valve] = copy.deepcopy(int(self.rs485_gui_slave.holding_reg_max_list[num_servo_valve]))             
+                self.rs485_gui_slave.holding_reg_list[num_servo_valve] = copy.deepcopy(int(self.rs485_gui_slave.holding_reg_max_list[num_servo_valve])) # assign ~1900 from the max list to command a servo.          
             else:
                 raise ValueError("In tsm_set_valve_positions(): INVALID slider and servo microseconds value.")
 
@@ -137,12 +166,23 @@ class Temperature_stabilisation_module():
         # Set valve A to flow cell and valve B
         # self.rs485_gui_slave.holding_reg_list[] = 
 
-    def update(self):
+    # Function that runs when the update button is pressed.
+    # It gets the values from the gui and send it to two slaves.
+    def update(self):       
+        self.rs485_gui_slave.holding_reg_list[9] = copy.deepcopy(self.gui_dict['Scale_dict']['set_pump_1_IntVar'].get())
+        self.rs485_gui_slave.holding_reg_list[10] = copy.deepcopy(self.gui_dict['Scale_dict']['set_pump_2_IntVar'].get())
+        # print("In update(): Setting pump 1 to ", self.rs485_gui_slave.holding_reg_list[9] )
+        # print("In update(): Setting pump 2 to ", self.rs485_gui_slave.holding_reg_list[10])
+
+        self.pumps_slave.holding_reg_list[0] = self.rs485_gui_slave.holding_reg_list[9]     # Set motor rpm for pump 1
+        self.pumps_slave.holding_reg_list[1] = self.rs485_gui_slave.holding_reg_list[10]    # Set motor rpm for pump 2
+
+        self.pumps_slave.update_slave_via_reg_list()
+        # print("slave number ", self.pumps_slave.slave_number)
+        # print("slave_address ", self.pumps_slave.slave_address)
+
         self.tsm_set_valve_positions()
-
-        self.pumps_slave.
         
-
 def root_window_bind_callback():
     print("In root_window_bind_callback():  ...")
     

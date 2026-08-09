@@ -88,6 +88,7 @@ void setup()
 void loop()
 {
   bool a = modbus.poll();
+  Serial.println(a);
 
   // We need to call set##Speed() before set##Brake() to avoid a glitch.
   // Glitch: if we call set##Brake() before set##Speed() the motors still move a bit/or jerk even if the brake is enable.

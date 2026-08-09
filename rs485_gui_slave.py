@@ -70,8 +70,15 @@ class rs485_gui_slave():
             # If the slave_dict has the Nth coil we create and place a check button on the frame, else, we break out of the for loop.
             # if the key "slave_N_Coil_M" exists in the self.slaves_mcfg.dict
             if "slave_" + str(self.slave_number) + "_Coil_" + str(coil_num) in self.slaves_mcfg.dict:
-                self.row_counter = self.row_counter + 1
-                self.coils_list.append(0)        
+
+                # Continue to next iteration of the loop if the value at key == "NA", we skip creation of tk widgets
+                if "NA" in self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Coil_" + str(coil_num)]:
+                    self.row_counter = self.row_counter + 1
+                    self.coils_list.append(0)                      
+                    continue  
+                else:
+                    self.row_counter = self.row_counter + 1
+                    self.coils_list.append(0)   
 
                 self.gui_dict['Label_dict']['Coil_' + str(coil_num)] = Label(self.frame, text = "Coil " + str(coil_num) + ": " + self.slaves_mcfg.dict['slave_' + str(self.slave_number) + "_Coil_" + str(coil_num)], bg = self.color, wraplength = 200)
                 self.gui_dict['Label_dict']['Coil_' + str(coil_num)].grid(row = 4 + coil_num, column = 0, sticky = "w", pady = 2, columnspan = 2)
@@ -93,9 +100,14 @@ class rs485_gui_slave():
         # Discrete Inputs. Read upto 100 discrete/digital inputs. Read only
         for discrete_inputs_num in range(0,100):
             if "slave_" + str(self.slave_number) + "_Discrete_input_" + str(discrete_inputs_num) in self.slaves_mcfg.dict:  
-                self.row_counter = self.row_counter + 1
-
-                self.discrete_inputs_list.append(0)
+                # Continue to next iteration of the loop if the value at key == "NA", we skip creation of tk widgets
+                if "NA" in self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Discrete_input_" + str(discrete_inputs_num)]:
+                    self.row_counter = self.row_counter + 1
+                    self.discrete_inputs_list.append(0)
+                    continue
+                else:
+                    self.row_counter = self.row_counter + 1
+                    self.discrete_inputs_list.append(0)
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num)] = Label(self.frame, 
@@ -116,17 +128,23 @@ class rs485_gui_slave():
         for holding_reg_num in range(0, 100):
             # # If the slave_dict has the Nth holding_register we create and place a check button on the frame, else, we break out of the for loop.
             if "slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num) in self.slaves_mcfg.dict:  
-                self.row_counter = self.row_counter + 1
 
-                self.holding_reg_list.append(0)
-
-                # Update holding registers with min and max allowed values
-                value = self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
-                splits = value.split(":")
-                # print("splits = ", splits)
-
-                # print("Slave number ", self.slave_number)
-                if "range" in value or "pulse" in value:
+                # Continue to next iteration of the loop if the value at key == "NA", we skip creation of tk widgets
+                if "NA" in self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]:
+                    self.row_counter = self.row_counter + 1
+                    self.holding_reg_list.append(0)     
+                    self.holding_reg_min_list.append(0)
+                    self.holding_reg_max_list.append(100)
+                    resolution = 1 
+                    print("Skipping holding reg no ", holding_reg_num)
+                    print("Skipping ", self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)])                                  
+                    continue
+                else:
+                    # Update holding registers with min and max allowed values
+                    value = self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
+                    splits = value.split(":")
+                    # print("splits = ", splits)
+                    self.holding_reg_list.append(0)     
                     self.holding_reg_min_list.append(float(splits[1]))
                     self.holding_reg_max_list.append(float(splits[2]))
                     try:
@@ -134,10 +152,6 @@ class rs485_gui_slave():
                         # print("resolution ", resolution)
                     except:
                         resolution = 1
-                else:
-                    self.holding_reg_min_list.append(0)
-                    self.holding_reg_max_list.append(100)
-                    resolution = 1
 
                 # print("self.holding_reg_min_list ", self.holding_reg_min_list)
                 # print("Resolution = ", resolution)
@@ -190,9 +204,15 @@ class rs485_gui_slave():
         for input_reg_num in range(0, 100):
             # # If the slave_dict has the Nth input_register we create and place a check button on the frame, else, we break out of the for loop.
             if "slave_" + str(self.slave_number) + "_Input_register_" + str(input_reg_num) in self.slaves_mcfg.dict:  
-                self.row_counter = self.row_counter + 1
 
-                self.input_reg_list.append(0)
+                # Continue to next iteration of the loop if the value at key == "NA", we skip creation of tk widgets
+                if "NA" in self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Input_register_" + str(input_reg_num)]:
+                    self.row_counter = self.row_counter + 1
+                    self.input_reg_list.append(0)
+                    continue
+                else:
+                    self.row_counter = self.row_counter + 1
+                    self.input_reg_list.append(0)
 
                 # Display what is in the XLSX sheet
                 self.gui_dict['Label_dict']['input_register_' + str(input_reg_num)] = Label(self.frame, 
@@ -231,9 +251,12 @@ class rs485_gui_slave():
         # UPDATE COILS: Write switches/status/ON/OFF to slave, values are bool: True/False
         # Get the values of all check boxes and update self.coil_list        
         for i in range(0, len(self.coils_list)):
-            value = self.gui_dict['Check_dict']['Coil_' + str(i) + "_var"].get()
-            self.coils_list[i] = value        # Update the coil_list
-            # print("In update_slave(): Pressed slave " + str(self.slave_number) + " Coil " + str(i) + " value = " + str(value))    # Debug
+            try:
+                value = self.gui_dict['Check_dict']['Coil_' + str(i) + "_var"].get()
+                self.coils_list[i] = value        # Update the coil_list
+                # print("In update_slave(): Pressed slave " + str(self.slave_number) + " Coil " + str(i) + " value = " + str(value))    # Debug
+            except:
+                continue
         
         print("In update_slave_via_gui(): Updated Coil list ", self.coils_list, len(self.coils_list))        
         res = self.mi.client.write_coils(address = 0, values = copy.deepcopy(self.coils_list), device_id = self.slave_address)      # We use a copy.deepcopy() since the client appends the variable self.coil_list for some reason !!!
@@ -244,16 +267,22 @@ class rs485_gui_slave():
         print("In update_slave_via_gui(): discrete inputs : ", res)
         for i in range(0, len(self.discrete_inputs_list)):
             self.discrete_inputs_list[i] = res.bits[i]
-            self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
+            try:
+                self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
+            except:
+                continue
         print("In update_slave_via_gui(): discrete_inputs_list ",self.discrete_inputs_list )
 
         # UPDATE HOLDING REGISTERS. Registers contain int16_t values.                 
         for holding_reg_num in range(0, len(self.holding_reg_list)):
-            user_entry = self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target_DoubleVar"].get()   # This is a float value         
-            value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
-            # print("Thresholded value ", value)            
-            self.holding_reg_list[holding_reg_num] = int(value)                        
-            self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))  
+            try:
+                user_entry = self.gui_dict['Scale_dict']['holding_register_' + str(holding_reg_num) + "_target_DoubleVar"].get()   # This is a float value         
+                value = max(min(user_entry,self.holding_reg_max_list[holding_reg_num]), self.holding_reg_min_list[holding_reg_num])     # saturate or check of the value is within bounds
+                # print("Thresholded value ", value)            
+                self.holding_reg_list[holding_reg_num] = int(value)                        
+                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))  
+            except:
+                continue
 
         # Write data to holding registers: Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list. 
         self.holding_reg_list = copy.deepcopy(self.mi.client.convert_to_registers(value=self.holding_reg_list, data_type=self.mi.client.DATATYPE.INT16, word_order="little") )       
@@ -267,8 +296,11 @@ class rs485_gui_slave():
         result = self.mi.client.read_input_registers(address=0, count = len(self.input_reg_list), device_id=self.slave_address)
         res = self.mi.client.convert_from_registers(result.registers, self.mi.client.DATATYPE.INT16, 'little')    #  little endian since arduino uses little endian
         for i in range(0,len(self.input_reg_list)):
-            self.input_reg_list[i] = round(res[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
-            self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
+            try:
+                self.input_reg_list[i] = round(res[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
+                self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
+            except:
+                continue
         print("In update_slave_via_gui(): input registers = ", self.input_reg_list)
 
         self.window.update()    # Update the GUI with latest values.
@@ -284,7 +316,10 @@ class rs485_gui_slave():
         res = self.mi.client.read_discrete_inputs(address = 0, count = len(self.discrete_inputs_list), device_id = self.slave_address)        
         for i in range(0, len(self.discrete_inputs_list)):
             self.discrete_inputs_list[i] = res.bits[i]
-            self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
+            try:
+                self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
+            except:
+                continue
         print("In update_slave_via_reg_list(): discrete_inputs_list ",self.discrete_inputs_list )
 
         # UPDATE HOLDING REGISTERS, Write data to Arduino, registers contain int16_t values.
@@ -299,30 +334,45 @@ class rs485_gui_slave():
         res = self.mi.client.convert_from_registers(result.registers, self.mi.client.DATATYPE.INT16, 'little') 
         for i in range(0,len(self.input_reg_list)):
             self.input_reg_list[i] = round(res[i]/10.0,1)     # The values are scaled by 10, we divide and round them to 1 decimal point. 
-            self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
-
+            try:
+                self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
+            except:
+                continue
         print("In update_slave_via_reg_list(): input registers = ", self.input_reg_list, ", length of input_reg = ", len(self.input_reg_list))
         
         self.window.update()        
         
     # Function that read the coils_list, discrete_input_list, holding_reg_list, input_register_list and updates the GUI.
     # This is required when an external control directly manipulates the *_reg_lists instead of changing the gui's widgets
+    # We need to use try:except here since there are no widgets because of values with NA in the xlsx sheet.
     def update_gui(self):
         # Read coil_list and update gui
         for coil_num in range(0, len(self.coils_list)):
-            self.gui_dict['Check_dict']['Coil_' + str(coil_num) + "_var"].set(self.coils_list[coil_num])
+            try:
+                self.gui_dict['Check_dict']['Coil_' + str(coil_num) + "_var"].set(self.coils_list[coil_num])
+            except:
+                continue
 
         # Read discrete_input_list and update gui
         for discrete_inputs_num in range(0, len(self.discrete_inputs_list)):
-            self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"].configure(text = str(self.discrete_inputs_list[discrete_inputs_num]))
+            try:
+                self.gui_dict['Label_dict']['discrete_input_' + str(discrete_inputs_num) + "_status"].configure(text = str(self.discrete_inputs_list[discrete_inputs_num]))
+            except:
+                continue
 
         # Read holding_reg_list and update gui
         for holding_reg_num in range(0, len(self.holding_reg_list)):
-            self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))
+            try:
+                self.gui_dict['Label_dict']['holding_register_' + str(holding_reg_num) + "_current"].configure(text = str(self.holding_reg_list[holding_reg_num]))
+            except:
+                continue
 
         # Read input_reg_list and update gui
         for input_reg_num in range(0, len(self.input_reg_list)):
-            self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].configure(text = str(self.input_reg_list[input_reg_num]))
+            try:
+                self.gui_dict['Label_dict']['input_register_' + str(input_reg_num) + "_current"].configure(text = str(self.input_reg_list[input_reg_num]))
+            except:
+                continue
 
         self.window.update()
 

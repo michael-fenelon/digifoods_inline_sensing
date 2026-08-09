@@ -26,7 +26,7 @@ class Modbus_Interface():
         if self.connection:
             print("Serial port connected. Starting polling...")
             toggle = True
-            device_id = 10
+            device_id = 1
             try:
                 while True:
                     print("\n")

@@ -27,11 +27,13 @@ class Slaves_Modbus_Config():
         print("Max number of rows = ", self.max_num_of_rows)
         print("Number of slaves = ", self.max_num_of_slaves)
 
-        # We iterate through the sheet and read each cell at (row,column) and create a dictionary keyy
+        # We iterate through the sheet and read each cell at (row,column) and create a dictionary key
         # Append the dictionary by reading each row until we reach a None.
         # Since the number of slaves start at 1 we add 1 to range().
         for slave_num in range(1, self.max_num_of_slaves + 1):
-            print("Data for slave number: ", slave_num)
+            if slave_num == 11:
+                print("Breaking after reading 10 slaves.")
+                break
 
             # When slave_num = 1, we read col 1,2
             # When slave_num = 2, we read col 3,4
@@ -54,6 +56,7 @@ class Slaves_Modbus_Config():
                 value = self.sheet_obj.cell(row = row, column = slave_num * 2).value
                 self.dict[key] = value
 
+            print("Read data for slave number: ", slave_num)
         # print(self.dict)
 
         print("\nDictionary = ")
