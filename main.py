@@ -64,13 +64,13 @@ if __name__ == "__main__":
 
     # Tab2
     tab_2_tsm_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
-    slave_2 = rs485_gui_slave(window = tab_2_tsm_window, slave_number = 2, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white")
+    slave_2 = rs485_gui_slave(window = tab_2_tsm_window, slave_number = 2, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white", canvas_height=950)
     slave_2.gen_slave_modbus_gui()
     slave_2.canvas.grid(row = 0, column = 2, sticky = "nw", columnspan = 1)           
     slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)
     
     pumps_slave = rs485_gui_slave(window = tab_2_tsm_window, slave_number = 1, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white")
-    # pumps_slave.gen_slave_modbus_gui()
+    pumps_slave.gen_slave_modbus_gui()      # We only create the gui and dictionary for the coils_list, discrete_input_list, holding_reg_lists and input_reg_list, but don't display it 
     # pumps_slave.canvas.grid(row = 1, column = 2, sticky = "nw", columnspan = 1)           
     # pumps_slave.vbar.grid(row = 1, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)    
     tsm = Temperature_stabilisation_module(window = tab_2_tsm_window, rs485_gui_slave = slave_2, pumps_slave = pumps_slave)    

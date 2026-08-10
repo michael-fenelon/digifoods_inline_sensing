@@ -8,8 +8,10 @@ from modbus_interface import Modbus_Interface
 from watchpoints import watch
 
 class rs485_gui_slave():
-    def __init__(self, window = None, slave_number = None, modbus_interface = None, slaves_mcfg = None, color = "white"):
+    def __init__(self, window = None, slave_number = None, modbus_interface = None, slaves_mcfg = None, color = "white", canvas_height = 800, canvas_width = 800):
         self.window = window
+        self.canvas_height = canvas_height
+        self.canvas_width = canvas_width
         # Difference between slave_number and slave_address.
         # These values don't have to match. slave number is a user's identification of a slave. 
         # slave_address is the address in the modbus RTU protocol  to access a slave.
@@ -35,8 +37,7 @@ class rs485_gui_slave():
         # Create a canvas for the Wavelengths and XLSX sheet
         # Canvas are scrollable, Frames are not.
         # So we create a Frame and put it on a canvas so that the frame and canvas become scrollable.
-        self.canvas_height = 800
-        self.canvas_width = 800 
+
         self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
         self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= self.color)        
         self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                       
@@ -144,6 +145,7 @@ class rs485_gui_slave():
                     value = self.slaves_mcfg.dict["slave_" + str(self.slave_number) + "_Holding_register_" + str(holding_reg_num)]
                     splits = value.split(":")
                     # print("splits = ", splits)
+                    self.row_counter = self.row_counter + 1
                     self.holding_reg_list.append(0)     
                     self.holding_reg_min_list.append(float(splits[1]))
                     self.holding_reg_max_list.append(float(splits[2]))
@@ -379,7 +381,6 @@ class rs485_gui_slave():
     # Function to enable or disable any user input buttons, sliders, check boxes...etc
     def enable_disable(self):
         pass
-
 
     def on_config_canvas(self, e ):        
         # Set the canvas scrollregion to fit the whole of frame.

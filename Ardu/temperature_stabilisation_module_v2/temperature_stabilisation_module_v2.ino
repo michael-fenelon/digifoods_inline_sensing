@@ -87,12 +87,12 @@ bool array_discrete_inputs[num_discrete_inputs] = {false};
 
 //  Holding registers = 16bit variable values, R+W
 //  Holding_register_0  NA
-//  Holding_register_1  Set valve 1 (A) position, pulse:900:1900
-//  Holding_register_2  Set valve 2 (B) position, pulse:900:1900
-//  Holding_register_3  Set valve 3 (A) position, pulse:900:1900
-//  Holding_register_4  Set valve 4 (B) position, pulse:900:1900
-//  Holding_register_5  Set valve 5 position, pulse:900:1900
-//  Holding_register_6  Set valve 6 position, pulse:900:1900
+//  Holding_register_1  Set valve 1 (A) position, pulse:950:1900
+//  Holding_register_2  Set valve 2 (B) position, pulse:950:1900
+//  Holding_register_3  Set valve 3 (A) position, pulse:1100:2000
+//  Holding_register_4  Set valve 4 (B) position, pulse:1000:1900
+//  Holding_register_5  Set valve 5 position(sample or water) pulse:900:1900
+//  Holding_register_6  NA
 //  Holding_register_7  Set water cut off temperature, range:20:50:0.1
 //  Holding_register_8  Set sample cut off temperature, range:20:50:0.1
 //  Holding_register_9  Set water pump, range:0:100
@@ -134,6 +134,13 @@ void setup()
   servo_5.attach(12);
   servo_6.attach(13);
 
+  servo_1.writeMicroseconds(1000);
+  servo_2.writeMicroseconds(1000);
+  servo_3.writeMicroseconds(1000);
+  servo_4.writeMicroseconds(1000);
+  servo_5.writeMicroseconds(1000);
+  servo_6.writeMicroseconds(1000);
+
   // Using Serial 3 for RS485 communication
   Serial3.begin(9600);
   modbus.begin(SLAVE_ADDRESS, SLAVE_BAUD_RATE, SLAVE_SERIAL_CONFIG); // Slave address = 1, Baud rate = 9600, Serial parameters = 8bit, no parity, 1 stop bit.
@@ -157,7 +164,7 @@ void loop()
 
   get_temperatures();
 
-  //reset_slave();
+  reset_slave();
 
   //print_array_coils();
   //print_array_discrete_inputs();
@@ -227,12 +234,12 @@ void set_valve_positions()
     servo_2.writeMicroseconds(array_holding_registers[2]);
     servo_3.writeMicroseconds(array_holding_registers[3]);
     servo_4.writeMicroseconds(array_holding_registers[4]);
-    //servo_5.writeMicroseconds(array_holding_registers[5]);
-    //servo_6.writeMicroseconds(array_holding_registers[6]);
-
-    //delay(500);
+    servo_5.writeMicroseconds(array_holding_registers[5]);
+    servo_6.writeMicroseconds(array_holding_registers[6]);
     //array_coils[3] = 0; // Reset the flag until master changes the value. This seems to cause the servos to only move every 2nd iteration.
+    //delay(500);
   }
+
 }
 
 void init_thermocouples()

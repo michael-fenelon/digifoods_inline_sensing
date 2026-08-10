@@ -34,9 +34,13 @@ class SAMPLE_BYPASS():
         self.rs485_gui_slave = rs485_gui_slave                
         self.color = "#d9d9d9"    # Deafult gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_sample_bypass'].cget("bg"))              
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Scale_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{}, 'Scale_dict':{} }
-        self.gen_sample_bypass_gui()   
-        self.humidity_temperature()             # Run this function and update the GUI, to show some values at startup.
-        self.sample_bypass_get_sample_weight()  # Run this function and update the GUI, to show some values at startup.
+        self.gen_sample_bypass_gui()  
+        # try: 
+        #     self.humidity_temperature()             # Run this function and update the GUI, to show some values at startup.
+        #     self.sample_bypass_get_sample_weight()  # Run this function and update the GUI, to show some values at startup.
+        # except:
+        #     print("Slave sample bypass not connect to RS485")
+        
         self.current_weight = 0.0
         self.untared_weight = 0.0
         self.tared_weight = 0.0
@@ -132,7 +136,7 @@ class SAMPLE_BYPASS():
         self.gui_dict['Label_dict']['reset_slave'] = Button(self.frame, text="RESET Arduino", command=self.sample_bypass_reset_slave, width = width)
 
         # Place all the widgets on the self.frame.
-        self.canvas.grid(row=0, column=0, sticky="nw", padx=5, pady=50)
+        self.canvas.grid(row=0, column=0, sticky="nw", padx=5, pady=5)
         self.gui_dict['Check_dict']['enable_sample_bypass'].grid(row = 0, column = 0, sticky = "nw", pady = 2, columnspan = 1)
         self.gui_dict['Radio_dict']['auto'].grid(row = 1, column = 0, sticky = "nw", pady = 2, columnspan = 1)
         self.gui_dict['Radio_dict']['debug'].grid(row = 2, column = 0, sticky = "nw", pady = 2, columnspan = 1)
