@@ -28,12 +28,18 @@ class Temperature_stabilisation_module():
         self.pumps_slave = pumps_slave
         self.color = "#d9d9d9"    # Deafult gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_tsm'].cget("bg"))              
         self.row_counter = 0
-        self.process_sample_stop_flag = False
-        self.process_water_stop_flag = False
-        self.infusion_stop_flag = False
+        # self.process_sample_stop_flag = False
+        # self.process_water_stop_flag = False
+        # self.infusion_stop_flag = False
+        self.time_start_sample = 0
+        self.time_now_sample = 0
+        self.target_sample_temp = 30
+        self.target_water_temp = 30
 
-        self.sample_color = "light goldenrod"
-        self.water_color = "light sky blue"
+        self.sample_color = "#d9d9d9"
+        self.water_color = "#d9d9d9"
+        # self.sample_color = "light goldenrod"
+        # self.water_color = "light sky blue"
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Scale_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{}, 'Scale_dict':{} }           
         self.gen_gui()
         try:
@@ -66,7 +72,26 @@ class Temperature_stabilisation_module():
 
         # 6 temperature sensors, 
         for num_temp_sensor in range(1,7):
-            self.gui_dict['Label_dict']['temperature_' + str(num_temp_sensor)] = Label(self.frame, text = 'Temperature ' + str(num_temp_sensor) + ' (deg C)')
+            # We need to specify the labels for specific temperatures. 
+            # Temp 1: Sample temp at withdrawal point
+            # Temp 2: Sample temp at recirculation point.
+            # Temp 3: Water temp at withdrawal point
+            # Temp 4: Water temp at recirculation point.
+            if num_temp_sensor == 1:
+                label = "Temp 1: Sample temp at withdrawal point"
+            elif num_temp_sensor == 2:
+                label = "Temp 2: Sample temp at recirculation point."
+            elif num_temp_sensor == 3:
+                label = "Temp 3: Water temp at withdrawal point"
+            elif num_temp_sensor == 4:
+                label = "Temp 4: Water temp at recirculation point."
+            elif num_temp_sensor == 5:
+                label = "NA"
+            elif num_temp_sensor == 6:
+                label = "NA"
+            
+            self.gui_dict['Label_dict']['temperature_' + str(num_temp_sensor)] = Label(self.frame, text = label)
+            #self.gui_dict['Label_dict']['temperature_' + str(num_temp_sensor)] = Label(self.frame, text = 'Temperature ' + str(num_temp_sensor) + ' (deg C)')
             self.gui_dict['Label_dict']['temperature_' + str(num_temp_sensor) + '_value'] = Label(self.frame, text = "---")
 
         # 6 three way valves, sliders for specific positions. 
@@ -114,7 +139,7 @@ class Temperature_stabilisation_module():
                 color = "light green"
 
             self.gui_dict['Label_dict']['pump_' + str(num_pump)] = Label(self.frame, text = 'Set Pump ' + str(num_pump) + ' RPM')
-            self.gui_dict['Scale_dict']['set_pump_' + str(num_pump) + '_IntVar'] = IntVar(value = 100)
+            self.gui_dict['Scale_dict']['set_pump_' + str(num_pump) + '_IntVar'] = IntVar(value = 10)
             self.gui_dict['Scale_dict']['set_pump_' + str(num_pump) ] = Scale(self.frame, variable = self.gui_dict['Scale_dict']['set_pump_' + str(num_pump) + '_IntVar'],
                                                                     from_ = 1, to = 100, resolution = 1, troughcolor = color,
                                                                     orient = HORIZONTAL, length = 350, border = 1, width = 20)               
@@ -122,26 +147,50 @@ class Temperature_stabilisation_module():
         self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'] = StringVar(value = "withdraw")
         self.gui_dict['Radio_dict']['sample_withdraw'] = tk.Radiobutton(self.frame, text = "Sample withdraw ", variable = self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'], value = "withdraw", height = 1, width = width, bg = self.sample_color)
         self.gui_dict['Radio_dict']['sample_recirculate'] = tk.Radiobutton(self.frame, text = "Sample recirculate", variable = self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'], value = "recirculate", height = 1, width = width, bg = self.sample_color) 
-        self.gui_dict['Button_dict']['process_sample'] = Button(self.frame, text = "Process Sample", command = self.tsm_process_sample, height = 1, width = width, bg = self.sample_color)   
-        self.gui_dict['Button_dict']['process_sample_stop'] = Button(self.frame, text = " STOP ", command = self.tsm_process_sample_stop, height = 1, width = 10, bg = self.sample_color)   
-        self.gui_dict['Label_dict']['sample_rec_temp_cutoff'] = Label(self.frame, text = 'Set sample recirculation cutoff temperature')
+        
+        self.gui_dict['Check_dict']['process_sample_IntVar'] = IntVar()
+        self.gui_dict['Check_dict']['process_sample'] = Checkbutton(self.frame, 
+                                                                            text="Process Sample Start / Stop",
+                                                                            variable=self.gui_dict['Check_dict']['process_sample_IntVar'],
+                                                                            onvalue=True, 
+                                                                            offvalue=False,
+                                                                            height=1, 
+                                                                            width = width,
+                                                                            command=self.tsm_process_sample,
+                                                                            bg = self.sample_color)
+        self.gui_dict['Label_dict']['process_sample_timeout'] = Label(self.frame, text = 'Timer @ ', bg = self.sample_color)
+                                                                    
+
+        # self.gui_dict['Button_dict']['process_sample'] = Button(self.frame, text = "Process Sample", command = self.tsm_process_sample, height = 1, width = width, bg = self.sample_color)   
+        # self.gui_dict['Button_dict']['process_sample_stop'] = Button(self.frame, text = " STOP ", command = self.tsm_process_sample_stop, height = 1, width = 10, bg = self.sample_color)   
+        self.gui_dict['Label_dict']['sample_rec_temp_cutoff'] = Label(self.frame, text = 'Set sample recirculation cutoff temperature', bg = self.sample_color)
         self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'] = DoubleVar(value = 25)
         self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_scale'] = Scale(self.frame, variable = self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'] ,
                                                                 from_ = 20, to = 40, resolution = 1, troughcolor = self.sample_color,
                                                                 orient = HORIZONTAL, length = 350, border = 1, width = 20)
-        self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] = Label(self.frame, text = '---')                                                                
+        self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] = Label(self.frame, text = '---', bg = self.sample_color)                                                                
 
         self.gui_dict['Radio_dict']['water_withdraw_recirculate_StringVar'] = StringVar(value = "withdraw")
         self.gui_dict['Radio_dict']['water_withdraw'] = tk.Radiobutton(self.frame, text = "Water withdraw ", variable = self.gui_dict['Radio_dict']['water_withdraw_recirculate_StringVar'], value = "withdraw", height = 1, width = width, bg = self.water_color)
         self.gui_dict['Radio_dict']['water_recirculate'] = tk.Radiobutton(self.frame, text = "Water recirculate", variable = self.gui_dict['Radio_dict']['water_withdraw_recirculate_StringVar'], value = "recirculate", height = 1, width = width, bg = self.water_color) 
-        self.gui_dict['Button_dict']['process_water'] = Button(self.frame, text = "Process Water", command = self.tsm_process_water, height = 1, width = width, bg = self.water_color)        
-        self.gui_dict['Button_dict']['process_water_stop'] = Button(self.frame, text = " STOP ", command = self.tsm_process_water_stop, height = 1, width = 10, bg = self.water_color)        
-        self.gui_dict['Label_dict']['water_rec_temp_cutoff'] = Label(self.frame, text = 'Set water recirculation cutoff temperature')
+        
+        self.gui_dict['Check_dict']['process_water_IntVar'] = IntVar()
+        self.gui_dict['Check_dict']['process_water'] = Checkbutton(self.frame, 
+                                                                            text="Process Water Start / Stop",
+                                                                            variable=self.gui_dict['Check_dict']['process_water_IntVar'],
+                                                                            onvalue=True,
+                                                                            offvalue=False,
+                                                                            height=1, 
+                                                                            width = width,
+                                                                            command=self.tsm_process_water,
+                                                                            bg = self.water_color)
+        self.gui_dict['Label_dict']['process_water_timeout'] = Label(self.frame, text = 'Timer @ ', bg = self.water_color)         
+        self.gui_dict['Label_dict']['water_rec_temp_cutoff'] = Label(self.frame, text = 'Set water recirculation cutoff temperature', bg = self.water_color)
         self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'] = DoubleVar(value = 25)
         self.gui_dict['Scale_dict']['water_rec_temp_cutoff_scale'] = Scale(self.frame, variable = self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'] ,
                                                                 from_ = 20, to = 40, resolution = 1, troughcolor = self.water_color,
                                                                 orient = HORIZONTAL, length = 350, border = 1, width = 20)
-        self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] = Label(self.frame, text = '---')
+        self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] = Label(self.frame, text = '---', bg = self.water_color)
 
         self.gui_dict['Radio_dict']['infuse_sample_water_StringVar'] = StringVar(value = "sample")
         self.gui_dict['Radio_dict']['infuse_sample'] = tk.Radiobutton(self.frame, text = "Infuse Sample to Flow cell ", variable = self.gui_dict['Radio_dict']['infuse_sample_water_StringVar'], value = "sample", height = 1, width = width, bg = "light green")
@@ -185,16 +234,18 @@ class Temperature_stabilisation_module():
 
         self.row_counter = self.row_counter + num_pump
         self.gui_dict['Radio_dict']['sample_withdraw'].grid(row = self.row_counter + 1, column = 0, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
-        self.gui_dict['Button_dict']['process_sample'].grid(row = self.row_counter + 1, column = 1, sticky = "e", pady = 2, columnspan = 1, rowspan = 2)
-        self.gui_dict['Button_dict']['process_sample_stop'].grid(row = self.row_counter + 1, column = 2, sticky = "e", pady = 2, columnspan = 1, rowspan = 2)        
+        self.gui_dict['Check_dict']['process_sample'].grid(row = self.row_counter + 1, column = 1, sticky = "w", pady = 2, columnspan = 1, rowspan = 1) 
+        self.gui_dict['Label_dict']['process_sample_timeout'].grid(row = self.row_counter + 2, column = 1, sticky = "w", pady = 2, columnspan = 1, rowspan = 1) 
         self.gui_dict['Radio_dict']['sample_recirculate'].grid(row = self.row_counter + 2, column = 0, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
         self.gui_dict['Label_dict']['sample_rec_temp_cutoff'].grid(row = self.row_counter + 3, column = 0, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
         self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_scale'].grid(row = self.row_counter + 3, column = 1, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
         self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'].grid(row = self.row_counter + 3, column = 2, sticky = "w", pady = 2, columnspan = 1, rowspan = 1)
         
         self.gui_dict['Radio_dict']['water_withdraw'].grid(row = self.row_counter + 4, column = 0, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
-        self.gui_dict['Button_dict']['process_water'].grid(row = self.row_counter + 4, column = 1, sticky = "e", pady = 2, columnspan = 1, rowspan = 2)
-        self.gui_dict['Button_dict']['process_water_stop'].grid(row = self.row_counter + 4, column = 2, sticky = "e", pady = 2, columnspan = 1, rowspan = 2)        
+        
+        self.gui_dict['Check_dict']['process_water'].grid(row = self.row_counter + 4, column = 1, sticky = "w", pady = 2, columnspan = 1, rowspan = 1) 
+        self.gui_dict['Label_dict']['process_water_timeout'].grid(row = self.row_counter + 5, column = 1, sticky = "w", pady = 2, columnspan = 1, rowspan = 1) 
+        
         self.gui_dict['Radio_dict']['water_recirculate'].grid(row = self.row_counter + 5, column = 0, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
         self.gui_dict['Label_dict']['water_rec_temp_cutoff'].grid(row = self.row_counter + 6, column = 0, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
         self.gui_dict['Scale_dict']['water_rec_temp_cutoff_scale'].grid(row = self.row_counter + 6, column = 1, sticky = "e", pady = 2, columnspan = 1, rowspan = 1)
@@ -214,75 +265,218 @@ class Temperature_stabilisation_module():
             self.gui_dict['Label_dict']['temperature_' + str(num_temp_sensor) + '_value'].config(text = str(self.rs485_gui_slave.input_reg_list[num_temp_sensor + 6]))
 
     def tsm_process_sample(self):       
-        self.process_sample_stop_flag = False
+        # if True:
+        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 1):
+            print("In tsm_process_sample(): START")
 
-        # Switch off the pump incase it was on
+            # Disable the withdraw / recirculate RadioButton until user aborts or timeout.
+            self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'disabled')
+            self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'disabled')
+            
+            action = self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'].get()     # "withdraw" or "recirculate" 
+            # We set the slider positions in the gui and call self.tsm_set_valve_positions()
+            if action == "withdraw":
+                self.gui_dict['Scale_dict']['set_servo_valve_1_IntVar'].set(2) 
+                self.gui_dict['Scale_dict']['set_servo_valve_2_IntVar'].set(2) 
+                self.gui_dict['Scale_dict']['set_servo_valve_5_IntVar'].set(1)    # Set the 5th servo valve to flowcell. 
+            elif action == "recirculate":
+                self.gui_dict['Scale_dict']['set_servo_valve_1_IntVar'].set(1) 
+                self.gui_dict['Scale_dict']['set_servo_valve_2_IntVar'].set(1)             
+                #self.gui_dict['Scale_dict']['set_servo_valve_5_IntVar'].set(2)    # Set the 5th servo valve to flowcell. Don't care condition.
 
-        action = self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'].get()     # "withdraw" or "recirculate" 
-        # We set the slider positions in the gui and call self.tsm_set_valve_positions()
-        if action == "withdraw":
-            self.gui_dict['Scale_dict']['set_servo_valve_1_IntVar'].set(1) 
-            self.gui_dict['Scale_dict']['set_servo_valve_2_IntVar'].set(1) 
-            self.gui_dict['Scale_dict']['set_servo_valve_5_IntVar'].set(1)    # Set the 5th servo valve to flowcell. 
-        elif action == "recirculate":
-            self.gui_dict['Scale_dict']['set_servo_valve_1_IntVar'].set(2) 
-            self.gui_dict['Scale_dict']['set_servo_valve_2_IntVar'].set(2)             
-            self.gui_dict['Scale_dict']['set_servo_valve_5_IntVar'].set(2)    # Set the 5th servo valve to flowcell.         
+            self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 50)    # Set pump 1 RPM, common RPM for withdraw and recirculation.
 
-        # Disable the user from changing the servo sliders until the process completes or by a timeout.
-        # The slider can be "set" or "moved" from the code to a different value even when it is disabled.        
-        # Even if the slider is disabled, the visuals don't seem to change and it still looks active.
-        for num_servo_valve in range(1,7):
-            self.gui_dict['Scale_dict']['set_servo_valve_' + str(num_servo_valve) ].config(state = "disabled")
-        # self.window.update()
+            # Disable the user from changing the servo sliders until the process completes or by a timeout.
+            # The slider can be "set" or "moved" from the code to a different value even when it is disabled.        
+            # Even if the slider is disabled, the visuals don't seem to change and it still looks active.
+            for num_servo_valve in range(1,7):
+                self.gui_dict['Scale_dict']['set_servo_valve_' + str(num_servo_valve) ].config(state = "disabled")
+            # self.window.update()
 
-        self.tsm_set_valve_positions()
+            self.tsm_set_valve_positions()
+            
+            if action == "withdraw":
+                # Turn on the pump for 30 seconds or until the user unchecks the button
+                self.time_start_sample = copy.deepcopy(time.time())      # Start a timer            
+                self.update()            
+                self.while_sample_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
+            elif action == "recirculate":                
+                self.target_sample_temp = self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider.           
+                self.time_start_sample = copy.deepcopy(time.time())      # Start a timer
+                self.while_sample_recirculate()               
+        else:       
+            print("In tsm_process_sample(): STOP")     
+            self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
+            self.update()                      
+            self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
 
-        # Turn on pump 1 to
-        if action == "withdraw":
-            # Turn on the pump for ## seconds
-            time_start = copy.deepcopy(time.time())      # Start a timer
+    # Recursive function to simulate a While True loop while widgets are active. 
+    def while_sample_withdraw(self):    
+        self.time_now_sample = copy.deepcopy(time.time())      # Curent time
+
+        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 0) or 30 < (self.time_now_sample - self.time_start_sample):        
+            self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(1) # Turn OFF pump                    
             self.update()
-            while True:
-                time_now = copy.deepcopy(time.time())      # Start a timer                
-                if self.process_sample_stop_flag == True or 10 < (time_now - time_start):  # If user pressed STOP or We wait for N seconds for sample withdrawal
-                    self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(1) # Turn OFF pump
-                    self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(1) # Turn OFF pump
-                    self.update()
-                    print("In tsm_process_sample(): User aborted process")
-                    break
-        # elif action == "recirculate":
-        #     target_temp = self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'].get()
-        #     # Monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
-        #     time_start = copy.deepcopy(time.time())      # Start a timer
-        #     while True:
-        #         time_now = copy.deepcopy(time.time())      # Start a timer
+            print("In while_sample_withdraw(): User aborted process or timeout")
 
-        #         self.get_temperatures()
-        #         if temp == user's requirement':
-        #             stop pump.
-        #             wait a bit
-        #             switch valves
-        #             wait a bit
-        #             switch on pump to infuse the stabilised sample to flow cell
-         
-    def tsm_process_sample_stop(self):        
-        self.process_sample_stop_flag = True   
-        print("In tsm_process_sample_stop(): process_sample_stop_flag ", self.process_sample_stop_flag)     
+            # Enable the withdraw / recirculate RadioButton for future use.
+            self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')
+            self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')            
 
-    def tsm_process_water(self):
-        print("In tsm_process_water():...")        
+            return
+        else:
+            print("In while_sample_withdraw(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
+            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))
 
-    def tsm_process_water_stop(self):        
-        self.process_water_stop_flag = True     
-        print("In tsm_process_water_stop(): process_water_stop_flag ", self.process_water_stop_flag)   
+        self.window.after(100,self.while_sample_withdraw)
+
+    # Recursive function to monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
+    def while_sample_recirculate(self):
+        self.time_now_sample = copy.deepcopy(time.time())      # Curent time
+
+        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 0) or 30 < (self.time_now_sample - self.time_start_sample):        
+            self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(1) # Turn OFF pump                    
+            self.update()
+            print("In while_sample_recirculate(): User aborted process or timeout")           
+            self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+
+            return
+        else:  
+            print("In while_sample_recirculate(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
+            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))                      
+            self.update()      # This will automatically update the temperatures. 
+            
+            # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
+            temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[7]- self.target_sample_temp),2)
+            self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff))
+            if (temp_diff <= 3.0):
+                print("In while_sample_recirculate(), Sample temperature is stabilised ", temp_diff)
+                self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
+                self.update()
+                self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")                                           
+                self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+                self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+                return
+            
+            else:
+                self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="orange")
+                print("while_sample_recirculate(): Waiting for temperature to stabilise.")
+
+        self.window.after(100,self.while_sample_recirculate)
+
+    def tsm_process_water(self):       
+        # if True:
+        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 1):
+            print("In tsm_process_water(): START")
+
+            # Disable the withdraw / recirculate RadioButton until user aborts or timeout.
+            self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'disabled')
+            self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'disabled')
+            
+            action = self.gui_dict['Radio_dict']['water_withdraw_recirculate_StringVar'].get()     # "withdraw" or "recirculate" 
+            # We set the slider positions in the gui and call self.tsm_set_valve_positions()
+            if action == "withdraw":
+                self.gui_dict['Scale_dict']['set_servo_valve_3_IntVar'].set(2) 
+                self.gui_dict['Scale_dict']['set_servo_valve_4_IntVar'].set(2) 
+                self.gui_dict['Scale_dict']['set_servo_valve_5_IntVar'].set(2)    # Set the 5th servo valve to flowcell. 
+            elif action == "recirculate":
+                self.gui_dict['Scale_dict']['set_servo_valve_3_IntVar'].set(1) 
+                self.gui_dict['Scale_dict']['set_servo_valve_4_IntVar'].set(1)             
+                #self.gui_dict['Scale_dict']['set_servo_valve_5_IntVar'].set(2)    # Set the 5th servo valve to flowcell. Don't care condition.
+
+            self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 50)    # Set pump 1 RPM, common RPM for withdraw and recirculation.
+
+            # Disable the user from changing the servo sliders until the process completes or by a timeout.
+            # The slider can be "set" or "moved" from the code to a different value even when it is disabled.        
+            # Even if the slider is disabled, the visuals don't seem to change and it still looks active.
+            for num_servo_valve in range(1,7):
+                self.gui_dict['Scale_dict']['set_servo_valve_' + str(num_servo_valve) ].config(state = "disabled")
+            # self.window.update()
+
+            self.tsm_set_valve_positions()
+            
+            if action == "withdraw":
+                # Turn on the pump for 30 seconds or until the user unchecks the button
+                self.time_start_water = copy.deepcopy(time.time())      # Start a timer            
+                self.update()            
+                self.while_water_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
+            elif action == "recirculate":                
+                self.target_water_temp = self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider.           
+                self.time_start_water = copy.deepcopy(time.time())      # Start a timer
+                self.while_water_recirculate()               
+        else:       
+            print("In tsm_process_water(): STOP")     
+            self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
+            self.update()                      
+            self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+
+    # Recursive function to simulate a While True loop while widgets are active. 
+    def while_water_withdraw(self):    
+        self.time_now_water = copy.deepcopy(time.time())      # Curent time
+
+        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 0) or 30 < (self.time_now_water - self.time_start_water):        
+            self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(1) # Turn OFF pump                    
+            self.update()
+            print("In while_water_withdraw(): User aborted process or timeout")
+
+            # Enable the withdraw / recirculate RadioButton for future use.
+            self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')
+            self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')            
+
+            return
+        else:
+            print("In while_water_withdraw(), Timer ", round(self.time_now_water - self.time_start_water,2))   
+            self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))
+
+        self.window.after(100,self.while_water_withdraw)
+
+    # Recursive function to monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
+    def while_water_recirculate(self):
+        self.time_now_water = copy.deepcopy(time.time())      # Curent time
+
+        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 0) or 30 < (self.time_now_water - self.time_start_water):        
+            self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(1) # Turn OFF pump                    
+            self.update()
+            print("In while_water_recirculate(): User aborted process or timeout")           
+            self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+
+            return
+        else:  
+            print("In while_water_recirculate(), Timer ", round(self.time_now_water - self.time_start_water,2))   
+            self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))                      
+            self.update()      # This will automatically update the temperatures. 
+            
+            # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
+            temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[7]- self.target_water_temp),2)
+            self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff))
+            if (temp_diff <= 3.0):
+                print("In while_water_recirculate(), water temperature is stabilised ", temp_diff)
+                self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
+                self.update()
+                self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")                                           
+                self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+                self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+                return
+            
+            else:
+                self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="orange")
+                print("while_water_recirculate(): Waiting for temperature to stabilise.")
+
+        self.window.after(100,self.while_water_recirculate)
 
     def tsm_infusion_to_flow_cell(self):
         pass
 
     def tsm_infusion_to_flow_cell_stop(self):
-        self.infusion_stop_flag = True
-        print("In tsm_infusion_to_flow_cell_stop(): infusion_stop_flag ", self.infusion_stop_flag)
+        pass
 
     def tsm_enable(self):
         print("In tsm_enable(): ...")        
@@ -333,7 +527,7 @@ class Temperature_stabilisation_module():
 
         self.tsm_set_valve_positions()
 
-        # self.get_temperatures()
+        self.get_temperatures()
         
 def root_window_bind_callback():
     print("In root_window_bind_callback():  ...")

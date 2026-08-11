@@ -311,7 +311,7 @@ class rs485_gui_slave():
     # Don't care for values in the gui.
     def update_slave_via_reg_list(self):
         # UPDATE COILS: Write switches/status/ON/OFF to slave, values are bool: True/False. 
-        print("\nIn update_slave_via_reg_list(): Updated Coil list ", self.coils_list, ", length of coil_list = ", len(self.coils_list))        
+        # print("\nIn update_slave_via_reg_list(): Updated Coil list ", self.coils_list, ", length of coil_list = ", len(self.coils_list))        
         res = self.mi.client.write_coils(address = 0, values = copy.deepcopy(self.coils_list), device_id = self.slave_address)      # We use a copy.deepcopy() since the client appends the variable self.coil_list for some reason !!!
 
         # UPDATE DISCRETE INPUTS Read switches/status/ON/OFF from slave, values are bool: True/False. 
@@ -322,13 +322,13 @@ class rs485_gui_slave():
                 self.gui_dict['Label_dict']['discrete_input_' + str(i) + "_status"].config(text = str(self.discrete_inputs_list[i]))
             except:
                 continue
-        print("In update_slave_via_reg_list(): discrete_inputs_list ",self.discrete_inputs_list )
+        # print("In update_slave_via_reg_list(): discrete_inputs_list ",self.discrete_inputs_list )
 
         # UPDATE HOLDING REGISTERS, Write data to Arduino, registers contain int16_t values.
         # Convert a generic INT16_t list to Pymodbus' default UINT16_t list -> Arduino's INT16_T list
         self.holding_reg_list = self.mi.client.convert_to_registers(value=self.holding_reg_list, data_type=self.mi.client.DATATYPE.INT16, word_order="little") 
         res = self.mi.client.write_registers(address = 0, values = self.holding_reg_list, device_id = self.slave_address)              
-        print("In update_slave_via_reg_list(): Holding_reg_list ", self.holding_reg_list, ", length of holding_list = ", len(self.holding_reg_list))
+        # print("In update_slave_via_reg_list(): Holding_reg_list ", self.holding_reg_list, ", length of holding_list = ", len(self.holding_reg_list))
 
         # UPDATE INPUT REGISTERS: Read from slave and populate the GUI. Registers contain int16_t values. 
         # Convert from Arduino's INT16_T list -> Pymodbus's default UINT16 list -> Actual INT16 list
@@ -340,7 +340,7 @@ class rs485_gui_slave():
                 self.gui_dict['Label_dict']['input_register_' + str(i) + "_current"].config(text = str(self.input_reg_list[i]))
             except:
                 continue
-        print("In update_slave_via_reg_list(): input registers = ", self.input_reg_list, ", length of input_reg = ", len(self.input_reg_list))
+        # print("In update_slave_via_reg_list(): input registers = ", self.input_reg_list, ", length of input_reg = ", len(self.input_reg_list))
         
         self.window.update()        
         
