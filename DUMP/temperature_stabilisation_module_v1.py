@@ -288,15 +288,8 @@ class Temperature_stabilisation_module():
             self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'disabled')
             
             self.gui_dict['Check_dict']['process_water'].config(state = 'disabled')  # Disable the Process water sections as well, since the valve 5 conflicts between sample and water. 
+            self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'disabled') # disable infusion section too. 
             
-            if self.gui_dict['Check_dict']['infuse_sample_or_water_IntVar'].get() == True:
-                self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'normal') # disable infusion section only if process sample section is being used.                
-            else:
-                self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'disabled') # disable infusion section only if process sample section is being used.
-            
-            # self.gui_dict['Radio_dict']['infuse_sample'].config(state = 'disabled')
-            # self.gui_dict['Radio_dict']['infuse_water'].config(state = 'disabled')
-
             action = self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'].get()     # "withdraw" or "recirculate" 
             # We set the slider positions in the gui and call self.tsm_set_valve_positions()
             if action == "withdraw":
@@ -330,15 +323,23 @@ class Temperature_stabilisation_module():
                 self.while_sample_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
             elif action == "recirculate":                                       
                 self.time_start_sample = copy.deepcopy(time.time())      # Start a timer
-                self.while_sample_recirculate()       
+                self.while_sample_recirculate()   
+
+            #self.set_to_normal()            
+
         else:       
             print("In tsm_process_sample(): STOP")     
             self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
             self.update()   
             self.set_to_normal()                   
-
+            # self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Check_dict']['process_water'].config(state = 'normal')  # Enable the buttons for future use
+            # self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'normal') # Enable the buttons for future use
+    
     # Recursive function to simulate a While True loop while widgets are active. 
-    def while_sample_withdraw(self):              
+    def while_sample_withdraw(self):    
+        self.target_sample_temp = self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider.    
         self.time_now_sample = copy.deepcopy(time.time())      # Curent time
 
         # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
@@ -349,6 +350,11 @@ class Temperature_stabilisation_module():
             self.update()
             self.set_to_normal()
             print("In while_sample_withdraw(): User aborted process or timeout")
+
+            # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')
+            # self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')            
+
             return
         else:
             #print("In while_sample_withdraw(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
@@ -359,7 +365,6 @@ class Temperature_stabilisation_module():
 
     # Recursive function to monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
     def while_sample_recirculate(self):
-        self.target_sample_temp = self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider (realtime update too).  
         self.time_now_sample = copy.deepcopy(time.time())      # Curent time
 
         # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
@@ -370,6 +375,9 @@ class Temperature_stabilisation_module():
             self.update()
             self.set_to_normal()
             print("In while_sample_recirculate(): User aborted process or timeout")           
+            # self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+
             return
         else:  
             #print("In while_sample_recirculate(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
@@ -378,20 +386,19 @@ class Temperature_stabilisation_module():
             self.update()      # This will automatically update the temperatures. 
             
             # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
-            temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[8]- self.target_sample_temp),2)
+            temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[7]- self.target_sample_temp),2)
             self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff))
             if (temp_diff <= 3.0):
                 print("In while_sample_recirculate(), Sample temperature is stabilised ", temp_diff)
                 self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
                 self.update()
-                self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")   
-                self.set_to_normal()                                        
+                self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")                                           
+                # self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+                # self.gui_dict['Radio_dict']['sample_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
                 return            
             else:
                 self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="orange")
-                print("while_sample_recirculate(): Waiting for temperature to stabilise")
-                print("Target temp = ", round(self.target_sample_temp,2))
-                print("Current temp = ", round(self.rs485_gui_slave.input_reg_list[8],2))
+                print("while_sample_recirculate(): Waiting for temperature to stabilise.")
 
         self.window.after(100,self.while_sample_recirculate)
 
@@ -404,11 +411,7 @@ class Temperature_stabilisation_module():
             self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'disabled')
             self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'disabled')
             self.gui_dict['Check_dict']['process_sample'].config(state = 'disabled')  # Disable the Process water sections as well, since the valve 5 conflicts between sample and water. 
-            
-            if self.gui_dict['Check_dict']['infuse_sample_or_water_IntVar'].get() == True:
-                self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'normal') # disable infusion section only if process sample section is being used.                
-            else:
-                self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'disabled') # disable infusion section only if process sample section is being used.         
+            self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'disabled') # disable infusion section too.             
             
             action = self.gui_dict['Radio_dict']['water_withdraw_recirculate_StringVar'].get()     # "withdraw" or "recirculate" 
             # We set the slider positions in the gui and call self.tsm_set_valve_positions()
@@ -448,6 +451,10 @@ class Temperature_stabilisation_module():
             self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF              
             self.update()                      
             self.set_to_normal()
+            # self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Check_dict']['process_sample'].config(state = 'normal')    # Enable the buttons for future use
+            # self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'normal') # Enable the buttons for future use
 
     # Recursive function to simulate a While True loop while widgets are active. 
     def while_water_withdraw(self):    
@@ -461,6 +468,11 @@ class Temperature_stabilisation_module():
             self.update()
             self.set_to_normal()
             print("In while_water_withdraw(): User aborted process or timeout")
+
+            # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')
+            # self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')            
+
             return
         else:
             #print("In while_water_withdraw(), Timer ", round(self.time_now_water - self.time_start_water,2))   
@@ -471,7 +483,6 @@ class Temperature_stabilisation_module():
 
     # Recursive function to monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
     def while_water_recirculate(self):
-        self.target_sample_temp = self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider (realtime update too)  
         self.time_now_water = copy.deepcopy(time.time())      # Curent time
 
         # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
@@ -482,6 +493,9 @@ class Temperature_stabilisation_module():
             self.update()
             self.set_to_normal()
             print("In while_water_recirculate(): User aborted process or timeout")           
+            # self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+            # self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
+
             return
         else:  
             #print("In while_water_recirculate(), Timer ", round(self.time_now_water - self.time_start_water,2))   
@@ -490,21 +504,20 @@ class Temperature_stabilisation_module():
             self.update()      # This will automatically update the temperatures. 
             
             # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
-            temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[10]- self.target_water_temp),2)
+            temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[7]- self.target_water_temp),2)
             self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff))
             if (temp_diff <= 3.0):
                 print("In while_water_recirculate(), water temperature is stabilised ", temp_diff)
                 self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
                 self.update()
-                self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")        
-                self.set_to_normal()                                   
+                self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")                                           
+                # self.gui_dict['Radio_dict']['water_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
+                # self.gui_dict['Radio_dict']['water_recirculate'].config(state = 'normal')  # Enable the withdraw / recirculate RadioButton for future use.
                 return
             
             else:
                 self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="orange")
                 print("while_water_recirculate(): Waiting for temperature to stabilise.")
-                print("Target temp = ", round(self.target_sample_temp,2))
-                print("Current temp = ", round(self.rs485_gui_slave.input_reg_list[10],2))                
 
         self.window.after(100,self.while_water_recirculate)
 
@@ -538,9 +551,13 @@ class Temperature_stabilisation_module():
             self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
             self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 2 RPM to OFF  
             self.update()    
-            self.gui_dict['Check_dict']['process_sample_IntVar'].set(0)     # Setting a value of 1 in a checkbox != actually clicking the checkbox.
-            self.gui_dict['Check_dict']['process_water_IntVar'].set(0)      # Setting a value of 1 in a checkbox != actually clicking the checkbox.            
             self.set_to_normal()
+            # self.gui_dict['Check_dict']['process_sample_IntVar'].set(0)    
+            # self.gui_dict['Check_dict']['process_water_IntVar'].set(0)                               
+            # self.gui_dict['Radio_dict']['infuse_sample'].config(state = 'normal')     # Enable the infuse sample / water RadioButton for future use.
+            # self.gui_dict['Radio_dict']['infuse_water'].config(state = 'normal')      # Enable the infuse sample / water RadioButton for future use.
+            # self.gui_dict['Check_dict']['process_sample'].config(state = 'normal')
+            # self.gui_dict['Check_dict']['process_water'].config(state = 'normal')
 
     def set_to_normal(self):
         self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
@@ -550,13 +567,10 @@ class Temperature_stabilisation_module():
         self.gui_dict['Check_dict']['process_sample'].config(state = 'normal')
         self.gui_dict['Check_dict']['process_water'].config(state = 'normal')
         self.gui_dict['Check_dict']['infuse_sample_or_water'].config(state = 'normal')
-        self.gui_dict['Radio_dict']['infuse_water'].config(state = 'normal')
-        self.gui_dict['Radio_dict']['infuse_sample'].config(state = 'normal')
 
         self.gui_dict['Check_dict']['process_sample_IntVar'].set(0)
         self.gui_dict['Check_dict']['process_water_IntVar'].set(0)
         self.gui_dict['Check_dict']['infuse_sample_or_water_IntVar'].set(0)
-        self.window.update()
 
     def tsm_enable(self):
         print("In tsm_enable(): ...")        

@@ -1,0 +1,185 @@
+// Info
+// https://github.com/pololu/dual-vnh5019-motor-shield/tree/master
+#include <avr/wdt.h>
+#include "DualVNH5019MotorShield.h"
+
+/*
+  Function description
+  DualVNH5019MotorShield()   Default constructor, selects the default pins as connected by the motor shield.
+  DualVNH5019MotorShield(unsigned char INA1, unsigned char INB1, unsigned char PWM1, unsigned char EN1DIAG1, unsigned char CS1, unsigned char INA2, unsigned char INB2, unsigned char PWM2, unsigned char EN2DIAG2, unsigned char CS2)
+  Alternate constructor for shield connections remapped by user. If PWM1 and PWM2 are remapped, it will try to use analogWrite instead of timer1.
+
+  void init()  Initialize pinModes and timer1.
+  void setM1Speed(int speed) Set speed and direction for motor 1. Speed should be between -400 and 400. 400 corresponds to motor current flowing from M1A to M1B. -400 corresponds to motor current flowing from M1B to M1A. 0 corresponds to full coast.
+  void setM2Speed(int speed) Set speed and direction for motor 2. Speed should be between -400 and 400. 400 corresponds to motor current flowing from M2A to M2B. -400 corresponds to motor current flowing from M2B to M2A. 0 corresponds to full coast.
+  void setSpeeds(int m1Speed, int m2Speed)   Set speed and direction for motor 1 and 2.
+  void setM1Brake(int brake) Set brake for motor 1. Brake should be between 0 and 400. 0 corresponds to full coast, and 400 corresponds to full brake.
+  void setM2Brake(int brake) Set brake for motor 2. Brake should be between 0 and 400. 0 corresponds to full coast, and 400 corresponds to full brake.
+  void setBrakes(int m1Brake, int m2Brake)   Set brake for motor 1 and 2.
+  unsigned int getM1CurrentMilliamps()   Returns current reading from motor 1 in milliamps. See the notes in the "Current readings" section below.
+  unsigned int getM2CurrentMilliamps()   Returns current reading from motor 2 in milliamps. See the notes in the "Current readings" section below.
+  unsigned char getM1Fault() Returns 1 if there is a fault on motor driver 1, 0 if no fault.
+  unsigned char getM2Fault() Returns 1 if there is a fault on motor driver 2, 0 if no fault.
+
+*/
+
+// RS485
+// We use the official arduino repo:
+//https://github.com/CMB27/ModbusRTUSlave/tree/main/examples/ModbusRTUSlaveExample
+//https://github.com/CMB27/ModbusSlaveLogic/tree/main/src
+
+#include <ModbusRTUSlave.h>
+#include <SoftwareSerial.h>
+
+#define RS485_TX 13   //1
+#define RS485_RX 11   //0
+#define SLAVE_ADDRESS 1
+#define SLAVE_BAUD_RATE 9600
+#define SLAVE_SERIAL_CONFIG SERIAL_8N1
+const byte dePin = 3;   // pinsDE and RE on the MAX485 module are shorted.
+
+SoftwareSerial RS485_serial(RS485_RX, RS485_TX);  // Create a serial port with the software serial pins.
+ModbusRTUSlave modbus(RS485_serial, dePin);       // Create a modbus object that uses the software serial port.
+
+// Coils = Digital outputs/writes, Eg: LED, Relays
+//  Coil_0  Enable Module
+//  Coil_1  Enable M1 brake
+//  Coil_2  Enable M2 brake
+//  Coil_3  Reset Slave
+const uint8_t num_coils = 4;                        // Number of digital outputs, W only
+bool array_coils[num_coils] = {0, 0, 0, 0};                             // array holding all the digital outputs, W only
+
+// Discrete Inputs = Digital inputs/reads, Eg: Switches
+//  Discrete_input_0  Fault for M1 ?
+//  Discrete_input_1  Fault for M2 ?
+const uint8_t num_discrete_inputs = 2;              // Number of digital inputs, R only
+bool array_discrete_inputs[num_discrete_inputs] = {false, false};
+
+// Holding registers = 16bit variable values, R+W
+//Holding_register_0  Set M1 speed, range:-100:100
+//Holding_register_1  Set M2 speed, range:-100:100
+//Holding_register_2  Set M1 brake, range:0:100
+//Holding_register_3  Set M2 brake, range:0:100
+const uint8_t num_holding_registers = 4;            // Number of holding registers, R + W
+uint16_t array_holding_registers[num_holding_registers] = {0, 0, 0, 0}; // Array holding N holding registers. R+W
+// The brakes are NOT ON/OFF but are from 0 to 400, so we use a holding register to implement brakes
+
+// Input_registers = 16bit variable values, R only.
+//  Input_register_0  M1 current (mA)
+//  Input_register_1  M2 current (mA)
+const uint8_t num_input_registers = 2;              // Number of input registers, R only
+uint16_t array_input_registers[num_input_registers];      // Array for input registers, R only.
+
+DualVNH5019MotorShield md;
+
+void setup()
+{
+  Serial.begin(9600);
+  Serial.println("Slave 1; VNH5019");
+  RS485_serial.begin(9600);
+  modbus.begin(SLAVE_ADDRESS, SLAVE_BAUD_RATE, SLAVE_SERIAL_CONFIG);  // Slave address = 1, Baud rate = 9600, Serial parameters = 8bit, no parity, 1 stop bit.
+  modbus.configureCoils(array_coils, num_coils);
+  modbus.configureDiscreteInputs(array_discrete_inputs, num_discrete_inputs);
+  modbus.configureHoldingRegisters(array_holding_registers, num_holding_registers);
+  modbus.configureInputRegisters(array_input_registers, num_input_registers);
+  md.init();  // init the motor driver
+  Serial.println("init() completed.");
+}
+
+void loop()
+{
+  bool a = modbus.poll();
+  //Serial.println(a);
+
+  // We need to call set##Speed() before set##Brake() to avoid a glitch.
+  // Glitch: if we call set##Brake() before set##Speed() the motors still move a bit/or jerk even if the brake is enable.
+  // This is weird, this is eliminated when we call set##Speed() before set##Brake().
+
+  // Update holding registers with client's values
+  // Set motor speeds
+  set_motor_1_rpm();
+  set_motor_2_rpm();
+
+  // Update coils from client
+  // Set/Enable/Disable brake
+  if (array_coils[1] == 1)
+    md.setM1Brake(array_holding_registers[2]);
+
+  if (array_coils[2] == 1)
+    md.setM2Brake(array_holding_registers[3]);
+
+  // Update discrete inputs/ switches/ status of slave
+  // Get faults if any
+  array_discrete_inputs[0] = md.getM1Fault();
+  array_discrete_inputs[1] = md.getM2Fault();
+
+  // Update input registers for client to read
+  // Get current draw from motors.
+  array_input_registers[0] = md.getM1CurrentMilliamps() * 10; // All input register values are scaled by 10 to represent floats.
+  array_input_registers[1] = md.getM2CurrentMilliamps() * 10; // All input register values are scaled by 10 to represent floats.
+
+  reset_slave();
+}
+
+void set_motor_1_rpm()
+{
+  md.setM1Speed(array_holding_registers[0]);
+}
+
+void set_motor_2_rpm()
+{
+  md.setM2Speed(array_holding_registers[1]);
+}
+
+/*
+  void set_motor_1_rpm()
+  {
+  // if the module is enabled run motors at required speed.
+  if (array_coils[0] == 1)
+  {
+    array_coils[0] = 0; // Reset the function unless master sets.
+    md.setM1Speed(array_holding_registers[0]);
+    Serial.println("Set motor 1 speed");
+  }
+  else
+  {
+    array_coils[0] = 0; // Reset the function unless master sets.
+    md.setM1Speed(0);
+    Serial.println("Set motor 1 speed to 0");
+  }
+  }
+
+  void set_motor_2_rpm()
+  {
+  // if the module is enabled run motors at required speed.
+  if (array_coils[0] == 1)
+  {
+    array_coils[0] = 0; // Reset the function unless master sets.
+    md.setM2Speed(array_holding_registers[1]);
+    Serial.println("Set motor 2 speed");
+  }
+  else
+  {
+    array_coils[0] = 0; // Reset the function unless master sets.
+    md.setM2Speed(0);
+    Serial.println("Set motor 2 speed to 0");
+  }
+  }
+*/
+
+// Software reset
+// https://forum.arduino.cc/t/soft-reset-and-arduino/367284/7
+void reset_slave()
+{
+  if (array_coils[3] == 1)
+  {
+    Serial.println("Reseting slave...");
+    delay(100);
+    array_coils[3] = 0;
+    wdt_disable();         // Disable watchdog to clear existing configurations
+    wdt_enable(WDTO_15MS); // Enable watchdog with a ultra-short 15ms timeout
+    while (1)
+    {
+    } // Enter infinite loop to let the timer expire and force reset
+  }
+}

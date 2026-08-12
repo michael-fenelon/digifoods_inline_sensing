@@ -262,11 +262,11 @@ class rs485_gui_slave():
         
         print("In update_slave_via_gui(): Updated Coil list ", self.coils_list, len(self.coils_list))        
         res = self.mi.client.write_coils(address = 0, values = copy.deepcopy(self.coils_list), device_id = self.slave_address)      # We use a copy.deepcopy() since the client appends the variable self.coil_list for some reason !!!
-        print("In update_update_slave_via_guislave(): write_coils : res :", res)
+        # print("In update_update_slave_via_guislave(): write_coils : res :", res)
 
         # UPDATE DISCRETE INPUTS Read switches/status/ON/OFF from slave, values are bool: True/False. 
         res = self.mi.client.read_discrete_inputs(address = 0, count = len(self.discrete_inputs_list), device_id = self.slave_address)
-        print("In update_slave_via_gui(): discrete inputs : ", res)
+        # print("In update_slave_via_gui(): discrete inputs : ", res)
         for i in range(0, len(self.discrete_inputs_list)):
             self.discrete_inputs_list[i] = res.bits[i]
             try:
@@ -415,7 +415,7 @@ if __name__ == "__main__":
     slaves_mcfg.get_config()
     mi = Modbus_Interface()     # Create a RS485 Modbus RTU interface with baud rate, 8N1 ...etc. 
 
-    slave_1 = rs485_gui_slave(window = root_window, slave_number = 2, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
+    slave_1 = rs485_gui_slave(window = root_window, slave_number = 1, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
     slave_1.gen_slave_modbus_gui()
     slave_1.canvas.grid(row = 0, column = 1, sticky = "nw",  columnspan = 1)        
     slave_1.vbar.grid(row = 0, column = 2, sticky = "ns", columnspan = 1, rowspan = 1) 
