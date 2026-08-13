@@ -59,9 +59,9 @@ class Slaves_Modbus_Config():
             print("Read data for slave number: ", slave_num)
         # print(self.dict)
 
-        print("\nDictionary = ")
-        for key in self.dict.keys():
-            print(key, self.dict[key])
+        # print("\nDictionary = ")
+        # for key in self.dict.keys():
+        #     print(key, self.dict[key])
 
 
 if __name__ == '__main__':    

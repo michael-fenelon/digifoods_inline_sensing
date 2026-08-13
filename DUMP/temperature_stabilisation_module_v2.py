@@ -9,11 +9,7 @@ from pymodbus.client import ModbusSerialClient
 from modbus_interface import Modbus_Interface
 from watchpoints import watch
 from rs485_gui_slave import*
-import numpy as np
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import matplotlib.pyplot as plt
-import datetime as dt
 
 # Alias tsm = = Temperature_stabilisation_module
 
@@ -27,61 +23,36 @@ import datetime as dt
     # infuse water into flow cell.
 
 class Temperature_stabilisation_module():
-    def __init__(self, window  = None, rs485_gui_slave = None, pumps_slave = None, canvas_height = 1000, canvas_width = 800, plots = None ):
+    def __init__(self, window  = None, rs485_gui_slave = None, pumps_slave = None):
         self.window = window    # root window from main.py
         self.rs485_gui_slave = rs485_gui_slave     
         self.pumps_slave = pumps_slave
-        self.canvas_height = canvas_height
-        self.canvas_width = canvas_width 
-        self.plots = plots
-        
-
         self.color = "#d9d9d9"    # Deafult gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_tsm'].cget("bg"))              
         self.row_counter = 0
+        # self.process_sample_stop_flag = False
+        # self.process_water_stop_flag = False
+        # self.infusion_stop_flag = False
         self.time_start_sample = 0
         self.time_now_sample = 0
         self.target_sample_temp = 30
         self.target_water_temp = 30
-        self.sample_withdrawal_point_T_list = []
-        self.sample_rec_point_T_list = []
-        self.sample_cutoff_point_T_list = []
-        self.water_withdrawal_point_T_list = []
-        self.water_rec_point_T_list = []       
-        self.water_cutoff_point_T_list = []    
-
-        self.time_temperature_list = []     # X axis
         self.wait_counter = 0
         self.temp_diff_tol = 1.0
+
         self.sample_color = "#d9d9d9"
         self.water_color = "#d9d9d9"
         # self.sample_color = "light goldenrod"
         # self.water_color = "light sky blue"
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Scale_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{}, 'Scale_dict':{} }           
         self.gen_gui()
-
-        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10, 4))
-        self.draw_canvas = FigureCanvasTkAgg(self.fig, master = self.plots.canvas)  
-        self.draw_canvas.get_tk_widget().grid(row=0, column=0)                
-        self.ax1.set_title('Sample')
-        self.ax1.set_xlabel('Time(s)')
-        self.ax1.set_ylabel('T (degC)')    
-        self.ax1.legend(loc="upper right")             
-        self.ax1.set_ylim(15, 50)
-        self.ax1.grid()
-
-        self.ax2.set_title('Water')
-        self.ax2.set_xlabel('Time(s)')
-        self.ax2.set_ylabel('T (degC)')
-        self.ax2.legend(loc="upper right")
-        self.ax2.set_ylim(15, 50)
-        self.ax2.grid()            
-
         try:
             self.get_temperatures()
         except:
             print("Slave TSM not connected to RS485")
           
     def gen_gui(self):
+        self.canvas_height = 1000
+        self.canvas_width = 800 
         self.canvas = tk.Canvas(self.window, bg = "white", height = self.canvas_height, width = self.canvas_width, background = "#d9d9d9",  highlightthickness = 5)  
         self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background = self.color)        
         self.canvas.create_window( 5, 5, window = self.frame, anchor = tk.NW )         
@@ -385,7 +356,6 @@ class Temperature_stabilisation_module():
             #print("In while_sample_withdraw(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
             self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))
             self.gui_dict['Label_dict']['process_sample_pump_1_current'].config(text = "Pump 1 current "  + str(self.pumps_slave.input_reg_list[0]) + " mA")
-            self.tsm_plot_sample_rec_temp()
 
         self.window.after(100,self.while_sample_withdraw)
 
@@ -408,7 +378,6 @@ class Temperature_stabilisation_module():
             self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))                      
             self.gui_dict['Label_dict']['process_sample_pump_1_current'].config(text = "Pump 1 current "  + str(self.pumps_slave.input_reg_list[0]) + " mA")
             self.update()      # This will automatically update the temperatures. 
-            self.tsm_plot_sample_rec_temp()
             
             # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
             temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[8]- self.target_sample_temp),2)
@@ -499,7 +468,6 @@ class Temperature_stabilisation_module():
             #print("In while_water_withdraw(), Timer ", round(self.time_now_water - self.time_start_water,2))   
             self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))
             self.gui_dict['Label_dict']['process_water_pump_2_current'].config(text = "Pump 2 current "  + str(self.pumps_slave.input_reg_list[1]) + " mA")
-            self.tsm_plot_sample_rec_temp()
 
         self.window.after(100,self.while_water_withdraw)
 
@@ -522,7 +490,6 @@ class Temperature_stabilisation_module():
             self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))    
             self.gui_dict['Label_dict']['process_water_pump_2_current'].config(text = "Pump 2 current "  + str(self.pumps_slave.input_reg_list[1]) + " mA")                  
             self.update()      # This will automatically update the temperatures. 
-            self.tsm_plot_sample_rec_temp()
             
             # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
             temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[10]- self.target_water_temp),2)
@@ -533,7 +500,8 @@ class Temperature_stabilisation_module():
                 self.update()
                 self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="green")        
                 self.set_to_normal()                                   
-                return            
+                return
+            
             else:
                 self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff), fg="orange")
                 print("while_water_recirculate(): Waiting for temperature to stabilise.")
@@ -576,44 +544,9 @@ class Temperature_stabilisation_module():
             self.gui_dict['Check_dict']['process_water_IntVar'].set(0)      # Setting a value of 1 in a checkbox != actually clicking the checkbox.            
             self.set_to_normal()
 
-    def tsm_plot_sample_rec_temp(self):        
+    def tsm_plot_sample_rec_temp(self):
+        pass
 
-        # Get data.
-        time = dt.datetime.now().minute + (dt.datetime.now().second/100)
-        self.time_temperature_list.append(time)
-        # self.time_temperature_list.append(dt.datetime.now().strftime('%H:%M:%S.%f'))
-
-        self.sample_withdrawal_point_T_list.append(self.rs485_gui_slave.input_reg_list[7])
-        self.sample_rec_point_T_list.append(self.rs485_gui_slave.input_reg_list[8])
-        self.sample_cutoff_point_T_list.append(self.gui_dict['Scale_dict']['sample_rec_temp_cutoff_DoubleVar'].get())        
-        
-        self.water_withdrawal_point_T_list.append(self.rs485_gui_slave.input_reg_list[9])
-        self.water_rec_point_T_list.append(self.rs485_gui_slave.input_reg_list[10])   
-        self.water_cutoff_point_T_list.append(self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'].get())
-
-        # limit the axis
-        self.time_temperature_list = self.time_temperature_list[-20:]
-
-        self.sample_withdrawal_point_T_list = self.sample_withdrawal_point_T_list[-20:]
-        self.sample_rec_point_T_list = self.sample_rec_point_T_list[-20:]
-        self.sample_cutoff_point_T_list = self.sample_cutoff_point_T_list[-20:]
-
-        self.water_withdrawal_point_T_list = self.water_withdrawal_point_T_list[-20:]
-        self.water_rec_point_T_list = self.water_rec_point_T_list[-20:]
-        self.water_cutoff_point_T_list = self.water_cutoff_point_T_list[-20:]
-
-        # plotting the graph
-        self.ax1.plot(self.time_temperature_list, self.sample_withdrawal_point_T_list,'b')
-        self.ax1.plot(self.time_temperature_list, self.sample_rec_point_T_list,'g')
-        self.ax1.plot(self.time_temperature_list, self.sample_cutoff_point_T_list,'r')
-        self.ax1.legend(['withdrawal','recirculation','cutoff'])   
-        
-        self.ax2.plot(self.time_temperature_list, self.water_withdrawal_point_T_list,'b')
-        self.ax2.plot(self.time_temperature_list, self.water_rec_point_T_list,'g')
-        self.ax2.plot(self.time_temperature_list, self.water_cutoff_point_T_list,'r')   
-        self.ax2.legend(['withdrawal','recirculation','cutoff'])   
-
-        self.draw_canvas.draw()            
 
     def set_to_normal(self):
         self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.
@@ -674,8 +607,6 @@ class Temperature_stabilisation_module():
         self.tsm_set_valve_positions()
 
         self.get_temperatures()
-
-        self.tsm_plot_sample_rec_temp()
         
 def root_window_bind_callback():
     print("In root_window_bind_callback():  ...")

@@ -17,6 +17,7 @@ from watchpoints import watch
 from rs485_gui_slave import*
 from sample_bypass_module import*
 from temperature_stabilisation_module import*
+from plots import*
 
 
 ### MAIN ############################################################################################################################################
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     # Create the root window
     root_window = Tk()   
     root_window.title('DigiFoods - Inline Sensing')       # Set window title    
-    window_width = 1700
+    window_width = 1750
     window_height = 1000
     root_window.geometry(str(window_width) + "x" + str(window_height))     # Set window size width x height   1600x1000
     # root_window.geometry("1600x1000")     # Set window size width x height   
@@ -64,29 +65,47 @@ if __name__ == "__main__":
 
     # Tab2
     tab_2_tsm_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
-    slave_2 = rs485_gui_slave(window = tab_2_tsm_window, slave_number = 2, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white", canvas_height=950)
+    slave_2 = rs485_gui_slave(window = tab_2_tsm_window,
+                                slave_number = 2,
+                                modbus_interface = mi,
+                                slaves_mcfg = slaves_mcfg,
+                                color="white", 
+                                canvas_height=500, 
+                                canvas_width=850)
     slave_2.gen_slave_modbus_gui()
-    slave_2.canvas.grid(row = 0, column = 2, sticky = "nw", columnspan = 1)           
-    slave_2.vbar.grid(row = 0, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)
     
+    # Create a slave for the peristatic pumps and pass it to tsm.
+    # We only create the gui and dictionary for the coils_list, discrete_input_list, holding_reg_lists and input_reg_list.abs
+    # We don't need the GUI and hence don't display it.
     pumps_slave = rs485_gui_slave(window = tab_2_tsm_window, slave_number = 1, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white")
-    pumps_slave.gen_slave_modbus_gui()      # We only create the gui and dictionary for the coils_list, discrete_input_list, holding_reg_lists and input_reg_list, but don't display it 
+    pumps_slave.gen_slave_modbus_gui()      
     # pumps_slave.canvas.grid(row = 1, column = 2, sticky = "nw", columnspan = 1)           
     # pumps_slave.vbar.grid(row = 1, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)    
-    tsm = Temperature_stabilisation_module(window = tab_2_tsm_window, rs485_gui_slave = slave_2, pumps_slave = pumps_slave)    
+
+    plots = PLOTS(window=tab_2_tsm_window, canvas_height=500, canvas_width=800)
+    plots.gen_gui()     
+
+    tsm = Temperature_stabilisation_module(window = tab_2_tsm_window,
+                                            rs485_gui_slave = slave_2,
+                                            pumps_slave = pumps_slave,
+                                            canvas_height=1000,
+                                            canvas_width=800,
+                                            plots=plots)
+    tsm.canvas.grid(row = 0, column = 0, sticky = "nw", padx = 5, pady = 5, rowspan=2)
+    slave_2.canvas.grid(row = 0, column = 1, sticky = "nw", columnspan = 1)           
+    slave_2.vbar.grid(row = 0, column = 2, sticky="ns", columnspan = 1, rowspan=1, padx= 10)
+    plots.canvas.grid(row = 1, column = 1, sticky = "nw", columnspan = 1)  
 
     root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui after ENTER key is pressed.
     root_window.lift()       # Bring window forwards
     # root_window.attributes('-topmost', True)
     root_window.protocol("WM_DELETE_WINDOW", on_closing)            # Let the window wait for any events
-
     s = ttk.Style()
     s.configure('TNotebook.Tab', font=('URW Gothic L','11','bold') )        # Gothic <3 :D !
 
-    notebook.add(tab_1_sample_bypass_window, text='  Sample Bypass  ') 
+    # notebook.add(tab_1_sample_bypass_window, text='  Sample Bypass  ') 
     notebook.add(tab_2_tsm_window, text='  Temperature equalisation module  ')   
-    # notebook.add(tab_3, text='  Temperature equalisation module (WIP)  ')   
-
+    
     notebook.grid(row=0, column=0)
     notebook.bind("<<NotebookTabChanged>>", tab_selected)       # Bind a monitor to check if we change between Tabs.
     # root_window.grid_columnconfigure((0,1), weight=2, uniform="column")   # This spaces the frame equally in columns    
