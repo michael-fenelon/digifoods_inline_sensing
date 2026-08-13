@@ -16,16 +16,6 @@ import matplotlib.pyplot as plt
 import datetime as dt
 
 # Alias tsm = = Temperature_stabilisation_module
-
-    # Possible functions.
-    # Get temperatures. 
-    # withdraw sample
-    # recirculate sample
-    # infuse sample into flowcell        
-    # withdraw water
-    # recirculate water.
-    # infuse water into flow cell.
-
 class Temperature_stabilisation_module():
     def __init__(self, window  = None, rs485_gui_slave = None, pumps_slave = None, canvas_height = 1000, canvas_width = 800, plots = None ):
         self.window = window    # root window from main.py
@@ -33,35 +23,46 @@ class Temperature_stabilisation_module():
         self.pumps_slave = pumps_slave
         self.canvas_height = canvas_height
         self.canvas_width = canvas_width 
-        self.plots = plots
-        
+        self.plots = plots        
 
         self.color = "#d9d9d9"    # Deafult gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_tsm'].cget("bg"))              
         self.row_counter = 0
+
         self.time_start_sample = 0
         self.time_now_sample = 0
         self.target_sample_temp = 30
+        self.sample_withdraw_timeout = 30   # Maximum time for whitdrawal, in seconds.
+        self.sample_rec_timeout = 60*5       # Maximum time for recirculation, in seconds
+
+        self.time_now_water = 0
+        self.time_start_water = 0
         self.target_water_temp = 30
+        self.water_withdraw_timeout = 30    # Maximum time for whitdrawal, in seconds.
+        self.water_rec_timeout = 60*5        # Maximum time for recirculation, in seconds
+
         self.sample_withdrawal_point_T_list = []
         self.sample_rec_point_T_list = []
         self.sample_cutoff_point_T_list = []
+        self.sample_temp_diff_list = []
+        
         self.water_withdrawal_point_T_list = []
         self.water_rec_point_T_list = []       
         self.water_cutoff_point_T_list = []    
+        self.water_temp_diff_list = []
 
         self.time_temperature_list = []     # X axis
         self.wait_counter = 0
         self.temp_diff_tol = 1.0
-        self.sample_color = "#d9d9d9"
-        self.water_color = "#d9d9d9"
-        # self.sample_color = "light goldenrod"
-        # self.water_color = "light sky blue"
+        # self.sample_color = "#d9d9d9"
+        # self.water_color = "#d9d9d9"
+        self.sample_color = "light goldenrod"
+        self.water_color = "light sky blue"
         self.gui_dict =  {'Label_dict':{}, 'Text_dict':{}, 'Button_dict':{}, 'Scale_dict':{}, 'Check_dict':{}, 'Drop_down_dict':{}, 'Radio_dict':{}, 'Progress_bar':{}, 'Scale_dict':{} }           
         self.gen_gui()
 
-        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(8, 4))
         self.draw_canvas = FigureCanvasTkAgg(self.fig, master = self.plots.canvas)  
-        self.draw_canvas.get_tk_widget().grid(row=0, column=0)                
+        self.draw_canvas.get_tk_widget().grid(row=0, column=0, sticky="w")                
         self.ax1.set_title('Sample')
         self.ax1.set_xlabel('Time(s)')
         self.ax1.set_ylabel('T (degC)')    
@@ -215,7 +216,7 @@ class Temperature_stabilisation_module():
                                                                             command=self.tsm_process_water,
                                                                             bg = self.water_color)
         self.gui_dict['Label_dict']['process_water_timeout'] = Label(self.frame, text = 'Timer @ ', bg = self.water_color)         
-        self.gui_dict['Label_dict']['process_water_pump_2_current'] = Label(self.frame, text = 'Pump 2 current (mA)', bg = self.sample_color, wraplength=100)
+        self.gui_dict['Label_dict']['process_water_pump_2_current'] = Label(self.frame, text = 'Pump 2 current (mA)', bg = self.water_color, wraplength=100)
         
         self.gui_dict['Label_dict']['water_rec_temp_cutoff'] = Label(self.frame, text = 'Set water recirculation cutoff temperature', bg = self.water_color)
         self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'] = DoubleVar(value = 25)
@@ -357,10 +358,13 @@ class Temperature_stabilisation_module():
             if action == "withdraw":
                 # Turn on the pump for 30 seconds or until the user unchecks the button
                 self.time_start_sample = copy.deepcopy(time.time())      # Start a timer            
-                self.update()            
+                self.update()  
+                self.tsm_clear_plots()          
                 self.while_sample_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
             elif action == "recirculate":                                       
                 self.time_start_sample = copy.deepcopy(time.time())      # Start a timer
+                self.sample_temp_diff_list = []     # reset the list to monitor temp_diff
+                self.tsm_clear_plots()
                 self.while_sample_recirculate()       
         else:       
             print("In tsm_process_sample(): STOP")     
@@ -372,9 +376,9 @@ class Temperature_stabilisation_module():
     def while_sample_withdraw(self):              
         self.time_now_sample = copy.deepcopy(time.time())      # Curent time
 
-        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
-        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 0) or 30 < (self.time_now_sample - self.time_start_sample):        
-            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))
+        # If the user unchecks the button or the timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 0) or self.sample_withdraw_timeout < (self.time_now_sample - self.time_start_sample):        
+            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = str(self.sample_withdraw_timeout) + 's Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))
             self.gui_dict['Label_dict']['process_sample_pump_1_current'].config(text = "Pump 1 current "  + str(self.pumps_slave.input_reg_list[0]) + " mA")
             self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(1) # Turn OFF pump                    
             self.update()
@@ -383,7 +387,7 @@ class Temperature_stabilisation_module():
             return
         else:
             #print("In while_sample_withdraw(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
-            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))
+            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = str(self.sample_withdraw_timeout) + 's Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))
             self.gui_dict['Label_dict']['process_sample_pump_1_current'].config(text = "Pump 1 current "  + str(self.pumps_slave.input_reg_list[0]) + " mA")
             self.tsm_plot_sample_rec_temp()
 
@@ -395,8 +399,8 @@ class Temperature_stabilisation_module():
         self.time_now_sample = copy.deepcopy(time.time())      # Curent time
 
         # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
-        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 0) or 30 < (self.time_now_sample - self.time_start_sample):        
-            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))   
+        if (self.gui_dict['Check_dict']['process_sample_IntVar'].get() == 0) or self.sample_rec_timeout < (self.time_now_sample - self.time_start_sample):        
+            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = str(self.sample_rec_timeout) + 's Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))   
             self.gui_dict['Label_dict']['process_sample_pump_1_current'].config(text = "Pump 1 current "  + str(self.pumps_slave.input_reg_list[0]) + " mA")
             self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(1) # Turn OFF pump                    
             self.update()
@@ -405,7 +409,7 @@ class Temperature_stabilisation_module():
             return
         else:  
             #print("In while_sample_recirculate(), Timer ", round(self.time_now_sample - self.time_start_sample,2))   
-            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))                      
+            self.gui_dict['Label_dict']['process_sample_timeout'].config(text = str(self.sample_rec_timeout) + 's Timer @ ' + str(round(self.time_now_sample - self.time_start_sample,2)))                      
             self.gui_dict['Label_dict']['process_sample_pump_1_current'].config(text = "Pump 1 current "  + str(self.pumps_slave.input_reg_list[0]) + " mA")
             self.update()      # This will automatically update the temperatures. 
             self.tsm_plot_sample_rec_temp()
@@ -413,7 +417,10 @@ class Temperature_stabilisation_module():
             # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
             temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[8]- self.target_sample_temp),2)
             self.gui_dict['Label_dict']['sample_rec_temp_cutoff_status'] .config(text = str(temp_diff))
-            if (temp_diff <= self.temp_diff_tol):
+            self.sample_temp_diff_list.append(temp_diff)
+            self.sample_temp_diff_list = self.sample_temp_diff_list[-10:]   # Keep only latest 10 elements of the list.
+            avg = np.mean(self.sample_temp_diff_list)                       # use the average of samples to decide if the temperature is stabilised.
+            if (avg <= self.temp_diff_tol):                
                 print("In while_sample_recirculate(), Sample temperature is stabilised ", temp_diff)
                 self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
                 self.update()
@@ -468,11 +475,13 @@ class Temperature_stabilisation_module():
             if action == "withdraw":
                 # Turn on the pump for 30 seconds or until the user unchecks the button
                 self.time_start_water = copy.deepcopy(time.time())      # Start a timer            
-                self.update()            
+                self.update()    
+                self.tsm_clear_plots()        
                 self.while_water_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
             elif action == "recirculate":                
                 self.target_water_temp = self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider.           
                 self.time_start_water = copy.deepcopy(time.time())      # Start a timer
+                self.tsm_clear_plots()
                 self.while_water_recirculate()     
 
             #self.set_to_normal()          
@@ -486,9 +495,9 @@ class Temperature_stabilisation_module():
     def while_water_withdraw(self):    
         self.time_now_water = copy.deepcopy(time.time())      # Curent time
 
-        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
-        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 0) or 30 < (self.time_now_water - self.time_start_water):        
-            self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))
+        # If the user unchecks the button or the timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 0) or self.water_withdraw_timeout < (self.time_now_water - self.time_start_water):        
+            self.gui_dict['Label_dict']['process_water_timeout'].config(text = str(self.water_withdraw_timeout) + 's Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))
             self.gui_dict['Label_dict']['process_water_pump_2_current'].config(text = "Pump 2 current "  + str(self.pumps_slave.input_reg_list[1]) + " mA")
             self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(1) # Turn OFF pump                    
             self.update()
@@ -497,7 +506,7 @@ class Temperature_stabilisation_module():
             return
         else:
             #print("In while_water_withdraw(), Timer ", round(self.time_now_water - self.time_start_water,2))   
-            self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))
+            self.gui_dict['Label_dict']['process_water_timeout'].config(text = str(water_withdraw_timeout) + 's Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))
             self.gui_dict['Label_dict']['process_water_pump_2_current'].config(text = "Pump 2 current "  + str(self.pumps_slave.input_reg_list[1]) + " mA")
             self.tsm_plot_sample_rec_temp()
 
@@ -508,9 +517,9 @@ class Temperature_stabilisation_module():
         self.target_sample_temp = self.gui_dict['Scale_dict']['water_rec_temp_cutoff_DoubleVar'].get()      # Get target temp from slider (realtime update too)  
         self.time_now_water = copy.deepcopy(time.time())      # Curent time
 
-        # If the user unchecks the button or the 30 timer runs out we stop the motor and return.
-        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 0) or 30 < (self.time_now_water - self.time_start_water):        
-            self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))      
+        # If the user unchecks the button or the timer runs out we stop the motor and return.
+        if (self.gui_dict['Check_dict']['process_water_IntVar'].get() == 0) or self.water_rec_timeout < (self.time_now_water - self.time_start_water):        
+            self.gui_dict['Label_dict']['process_water_timeout'].config(text = str(self.water_rec_timeout) + 's Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))      
             self.gui_dict['Label_dict']['process_water_pump_2_current'].config(text = "Pump 2 current "  + str(self.pumps_slave.input_reg_list[1]) + " mA")                
             self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(1) # Turn OFF pump                    
             self.update()
@@ -519,7 +528,7 @@ class Temperature_stabilisation_module():
             return
         else:  
             #print("In while_water_recirculate(), Timer ", round(self.time_now_water - self.time_start_water,2))   
-            self.gui_dict['Label_dict']['process_water_timeout'].config(text = '30s Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))    
+            self.gui_dict['Label_dict']['process_water_timeout'].config(text = str(self.water_rec_timeout) + 's Timer @ ' + str(round(self.time_now_water - self.time_start_water,2)))    
             self.gui_dict['Label_dict']['process_water_pump_2_current'].config(text = "Pump 2 current "  + str(self.pumps_slave.input_reg_list[1]) + " mA")                  
             self.update()      # This will automatically update the temperatures. 
             self.tsm_plot_sample_rec_temp()
@@ -527,7 +536,10 @@ class Temperature_stabilisation_module():
             # If temperature difference between target and current is less than 3 degC we exit , else we wait until timeout or the user aborts
             temp_diff = round(abs(self.rs485_gui_slave.input_reg_list[10]- self.target_water_temp),2)
             self.gui_dict['Label_dict']['water_rec_temp_cutoff_status'] .config(text = str(temp_diff))
-            if (temp_diff <= self.temp_diff_tol):
+            self.water_temp_diff_list.append(temp_diff)
+            self.water_temp_diff_list = self.water_temp_diff_list[-10:]     # Keep only latest 10 elements of the list.
+            avg = np.mean(self.water_temp_diff_list)                        # use the average of samples to decide if the temperature is stabilised.
+            if (avg <= self.temp_diff_tol):
                 print("In while_water_recirculate(), water temperature is stabilised ", temp_diff)
                 self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
                 self.update()
@@ -614,6 +626,14 @@ class Temperature_stabilisation_module():
         self.ax2.legend(['withdrawal','recirculation','cutoff'])   
 
         self.draw_canvas.draw()            
+
+    def tsm_clear_plots(self):
+        self.ax1.clear()
+        self.ax2.clear()  
+        self.ax1.grid()
+        self.ax2.grid()           
+        
+           
 
     def set_to_normal(self):
         self.gui_dict['Radio_dict']['sample_withdraw'].config(state = 'normal')     # Enable the withdraw / recirculate RadioButton for future use.

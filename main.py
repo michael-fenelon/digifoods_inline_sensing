@@ -60,7 +60,7 @@ if __name__ == "__main__":
     slave_1 = rs485_gui_slave(window = tab_1_sample_bypass_window, slave_number = 3, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
     slave_1.gen_slave_modbus_gui()
     slave_1.canvas.grid(row = 0, column = 1, sticky = "nw",  columnspan = 1)        
-    slave_1.vbar.grid(row = 0, column = 2, sticky = "ns", columnspan = 1, rowspan = 1, padx= 10)           
+    slave_1.vbar.grid(row = 0, column = 3, sticky = "ns", columnspan = 1, rowspan = 1, padx= 10)           
     sample_bypass = SAMPLE_BYPASS(window = tab_1_sample_bypass_window, rs485_gui_slave = slave_1)    
 
     # Tab2
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     # pumps_slave.canvas.grid(row = 1, column = 2, sticky = "nw", columnspan = 1)           
     # pumps_slave.vbar.grid(row = 1, column = 3, sticky="ns", columnspan = 1, rowspan=1, padx= 10)    
 
-    plots = PLOTS(window=tab_2_tsm_window, canvas_height=500, canvas_width=800)
+    plots = PLOTS(window=tab_2_tsm_window, canvas_height=500, canvas_width=700)
     plots.gen_gui()     
 
     tsm = Temperature_stabilisation_module(window = tab_2_tsm_window,
