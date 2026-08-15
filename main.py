@@ -18,6 +18,7 @@ from rs485_gui_slave import*
 from sample_bypass_module import*
 from temperature_stabilisation_module import*
 from plots import*
+from tsm import*
 
 
 ### MAIN ############################################################################################################################################
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     
     notebook = ttk.Notebook(root_window)    # Notebook widget
 
-    # Tab1 
+    # TAB 1 
     tab_1_sample_bypass_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
     slave_1 = rs485_gui_slave(window = tab_1_sample_bypass_window, slave_number = 3, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color = "white")
     slave_1.gen_slave_modbus_gui()
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     slave_1.vbar.grid(row = 0, column = 3, sticky = "ns", columnspan = 1, rowspan = 1, padx= 10)           
     sample_bypass = SAMPLE_BYPASS(window = tab_1_sample_bypass_window, rs485_gui_slave = slave_1)    
 
-    # Tab2
+    # TAB 2
     tab_2_tsm_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
     slave_2 = rs485_gui_slave(window = tab_2_tsm_window,
                                 slave_number = 2,
@@ -96,6 +97,23 @@ if __name__ == "__main__":
     slave_2.vbar.grid(row = 0, column = 2, sticky="ns", columnspan = 1, rowspan=1, padx= 10)
     plots.canvas.grid(row = 1, column = 1, sticky = "nw", columnspan = 1)  
 
+    notebook.add(tab_2_tsm_window, text='  Temperature equalisation module  ')   
+
+    # TAB 3
+    tab_3_tsm_window = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
+    t = TSM(window = tab_3_tsm_window, canvas_height=500, canvas_width=100, color="orange")
+    t.canvas.config(bg="blue")
+    t.gen_gui()
+    
+
+    # t.canvas.grid(row=0, column=0)    
+    # t1 = TSM(window = tab_3_tsm_window)
+    # t1.canvas.grid(row=1, column=1)
+    
+    # t2 = TSM(window = tab_3_tsm_window)
+    # t2.canvas.grid(row=5, column=2)
+
+
     root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui after ENTER key is pressed.
     root_window.lift()       # Bring window forwards
     # root_window.attributes('-topmost', True)
@@ -104,8 +122,12 @@ if __name__ == "__main__":
     s.configure('TNotebook.Tab', font=('URW Gothic L','11','bold') )        # Gothic <3 :D !
 
     # notebook.add(tab_1_sample_bypass_window, text='  Sample Bypass  ') 
-    notebook.add(tab_2_tsm_window, text='  Temperature equalisation module  ')   
     
+    notebook.add(tab_3_tsm_window, text='  Temperature equalisation module  ')   
+    
+    t.canvas.grid(row=1, column=0, sticky="nw")
+
+
     notebook.grid(row=0, column=0)
     notebook.bind("<<NotebookTabChanged>>", tab_selected)       # Bind a monitor to check if we change between Tabs.
     # root_window.grid_columnconfigure((0,1), weight=2, uniform="column")   # This spaces the frame equally in columns    
