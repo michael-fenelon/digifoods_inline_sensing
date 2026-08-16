@@ -24,13 +24,15 @@ class Element():
         self.canvas = tk.Canvas(self.window, bg=self.bg_color, height = self.canvas_height, width = self.canvas_width, highlightthickness = 0)  
         self.frame = tk.Frame(self.canvas, width = self.canvas_width + 5, height = self.canvas_height + 5, background= self.bg_color)        
         self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                       
-        self.gen_gui()  # The master will not have to run this separately. 
+        # self.gen_gui()        # Some issue with MRO when uncommented
 
-    def gen_gui(self):
+    def gen_gui(self):        
         self.gui_dict[self.name] = Label(self.frame, text = self.name, bg=self.bg_color, fg=self.fg_color)
         self.gui_dict[self.name].place(x = self.canvas_width * 0.25, y = self.canvas_height * 0.3)  #, anchor="center")
         # self.gui_dict[self.name].grid(row=0, column=0, sticky = "ns", columnspan = 2)
         self.canvas.place(x = self.x, y = self.y)
+
+        print("In Element " + self.name + " gen_gui(): Completed")
 
 
         

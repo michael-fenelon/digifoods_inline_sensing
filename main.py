@@ -98,6 +98,7 @@ if __name__ == "__main__":
 
     # TAB 3
     tab_3 = ttk.Frame(notebook, border = 2, height = window_height, width = window_width, padding=1)
+    # Slave: Arduino Mega with interface to 6 x SPI Temperature sensors, 6 x Servo valves. 
     slave_3 = rs485_gui_slave(window = tab_3,
                                 slave_number = 2,
                                 modbus_interface = mi,
@@ -110,13 +111,15 @@ if __name__ == "__main__":
     # Create a slave for the peristatic pumps and pass it to tsm.
     # We only create the gui and dictionary for the coils_list, discrete_input_list, holding_reg_lists and input_reg_list.abs
     # We don't need the GUI and hence don't display it.
+    # Slave: VNH5019 motor driver for peristatic pump
     pumps_slave = rs485_gui_slave(window = tab_3, slave_number = 1, modbus_interface = mi, slaves_mcfg = slaves_mcfg, color="white")
     pumps_slave.gen_slave_modbus_gui()      
     
     plots = Element(window=tab_3, name = "T plots ",canvas_height=500, canvas_width=700)      
+    plots.gen_gui()
 
     tsm = Temperature_stabilisation_module(window = tab_3,
-                                            rs485_gui_slave = slave_3,
+                                            ardu_mega_slave = slave_3,
                                             pumps_slave = pumps_slave,
                                             color="white",
                                             canvas_height = 1000,

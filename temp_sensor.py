@@ -7,6 +7,7 @@ from element import*
 class T_sensor(Element):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.temperature = 0
         self.gen_gui()
 
     def gen_gui(self):
@@ -21,3 +22,8 @@ class T_sensor(Element):
         # self.gui_dict['temperature'].grid(row= 1, column=0, sticky = "")
         self.canvas.place(x = self.x, y = self.y)
   
+    # Get a float value and update the gui.
+    def update_temp(self, value):
+        self.temperature = value
+        self.gui_dict['temperature'].config(text = str( round(value,2) ) + " degC")
+

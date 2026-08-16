@@ -6,10 +6,21 @@ import copy
 from element import*
 
 class Valve(Element):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gen_gui()
-    def gen_gui(self):
+    def __init__(self, holding_reg_num = None, 
+                    coil_num = None,     
+                    mi = None, 
+                    ardu_mega_slave = None, 
+                    *args, **kwargs):
+        super().__init__(*args, **kwargs)        
+        self.holding_reg_num = holding_reg_num  # Holding reg num of the valve from XLSX sheet.
+        self.coil_num = coil_num                # The Coil_## for Set Valve positions
+        self.mi = mi                            # modbus interface     
+        self.ardu_mega_slave = ardu_mega_slave  # The arduino connected to the slave.
+        self.valve_pos = 1  # Can be 1 or 2 only
+        self.valve_min_microsec = 0     # PWM value for valve at pos 1
+        self.valve_max_microsec = 0     # PWM value for valve at pos 2
+        # self.gen_gui()        # Some issue with MRO when uncommented
+    def gen_gui(self):        
         self.gui_dict[self.name] = Label(self.frame, text = self.name)
         self.gui_dict['in 1'] = Label(self.frame, text = "IN 1", fg = self.fg_color, bg=self.bg_color)
         self.gui_dict['in 2'] = Label(self.frame, text = "IN 2", fg = self.fg_color, bg=self.bg_color)
@@ -18,8 +29,7 @@ class Valve(Element):
         self.gui_dict['position_status'] = Scale(self.frame, 
                                                         variable = self.gui_dict['position_status_IntVar'],
                                                         from_ = 1, to = 2, resolution = 1, troughcolor = "white",
-                                                        orient = HORIZONTAL, length = self.canvas_width-8, border = 1, width = 20)                
-
+                                                        orient = HORIZONTAL, length = self.canvas_width-15, border = 1, width = 20)              
 
         # Placement of widgets for a valve on the canvas.
         self.gui_dict[self.name] .grid(row= 0, column=1, sticky = "nw", columnspan = 3)
@@ -29,7 +39,28 @@ class Valve(Element):
         self.gui_dict['in 2'].grid(row= 2, column=2, sticky = "ns")
 
         self.canvas.place(x = self.x, y = self.y)
+
+        # Get the PWM values for pos 1 and 2 from the min and max lists.    
+        self.valve_min_microsec = copy.deepcopy(int(self.ardu_mega_slave.holding_reg_min_list[self.holding_reg_num])) # assign ~900 from the min list to command a servo.
+        self.valve_max_microsec = copy.deepcopy(int(self.ardu_mega_slave.holding_reg_max_list[self.holding_reg_num])) # assign ~1900 from the max list to command a servo.          
+
+        print("In valve " + self.name + " gen_gui(): Completed")
+
+    # Get a value 1 or 2 from master, update the holding registers respectively. 
+    def set_valve_pos(self, pos = 1):
+        self.valve_pos = pos        # This holds the most updated status of the valve, we don't need to read from the gui widget.
+        if self.valve_pos == 1:
+            self.ardu_mega_slave.holding_reg_list[self.holding_reg_num] = self.valve_min_microsec
+            self.gui_dict['position_status_IntVar'].set(self.valve_pos)
+        elif self.valve_pos == 2:
+            self.ardu_mega_slave.holding_reg_list[self.holding_reg_num] = self.valve_max_microsec
+            self.gui_dict['position_status_IntVar'].set(self.valve_pos)
+        else:
+            raise ValueError("In Valve " + str(self.name) + " , ValueError:Invalid servo position")
     
+    def get_valve_pos(self):
+        return self.valve_pos
+
 def root_window_bind_callback():
     print("In root_window_bind_callback():  ...")
 

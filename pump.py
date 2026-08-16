@@ -6,14 +6,25 @@ import copy
 from element import*
  
 # Inherit from the Parent class Element and build a Child class.
+# The respective holding register number is inputted at instantiation.
+# Thus, the child reads the min, max, 
 class Pump(Element):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, holding_reg_num = None, 
+                        coil_num = None, 
+                        mi = None,
+                        ardu_uno_slave = None,
+                        *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rpm = 0
         self.enable = False    
-        self.gen_gui()  # The master will not have to run this separately.                
+        self.holding_reg_num = holding_reg_num
+        self.coil_num = coil_num
+        self.mi = mi
+        self.ardu_uno_slave = ardu_uno_slave
+        # print("self.ardu_uno_slave ", ardu_uno_slave)
+        # self.gen_gui()        # Some issue with MRO when uncommented             
             
-    def gen_gui(self):
+    def gen_gui(self):        
         self.gui_dict[self.name] = Label(self.frame, text = self.name)
         self.gui_dict['enable_BooleanVar'] = BooleanVar()
         self.gui_dict['enable'] = Checkbutton(self.frame, 
@@ -31,7 +42,7 @@ class Pump(Element):
         self.gui_dict['rpm_status'] = Scale(self.frame, 
                                             variable = self.gui_dict['rpm_status_IntVar'],
                                             from_ = 0, to = 100, resolution = 1, troughcolor = "white",
-                                            orient = HORIZONTAL, length = self.canvas_width-8, border = 1, width = 20)              
+                                            orient = HORIZONTAL, length = self.canvas_width-15, border = 1, width = 20)              
 
         # Placement of widgets for a pump on the canvas.
         self.gui_dict[self.name] .grid(row= 0, column=1, sticky = "nw", columnspan = 2)
@@ -41,6 +52,8 @@ class Pump(Element):
         self.gui_dict['out'].grid(row= 2, column=2, sticky = "ns") 
 
         self.canvas.place(x = self.x, y = self.y)
+
+        print("In pump " + self.name + " gen_gui(): Completed")
     
     def enable_callback(self):
         print("clicked")
@@ -48,6 +61,12 @@ class Pump(Element):
         self.rpm = self.gui_dict['rpm_status'].get()
         print("In pump ", self.name, " status = ", self.enable, " , RPM = ", self.rpm)
     
+    # Get a value from master, update the holding reg list and the gui
+    def set_rpm(self, value):
+        self.ardu_uno_slave.coils_list[self.coil_num] = 1
+        self.ardu_uno_slave.holding_reg_list[self.holding_reg_num] = value
+        self.gui_dict['rpm_status_IntVar'].set(value)
+
 def root_window_bind_callback():
     print("In root_window_bind_callback():  ...")
 
