@@ -73,7 +73,7 @@ class Temperature_stabilisation_module():
         self.time_temperature_list = []     # X axis
 
         self.wait_counter = 0
-        self.temp_diff_tol = 1.0
+        self.temp_diff_tol = 2.0
         # self.sample_color = "#d9d9d9"
         # self.water_color = "#d9d9d9"
         self.sample_color = "light goldenrod"
@@ -84,11 +84,11 @@ class Temperature_stabilisation_module():
         self.fig, (self.ax1) = plt.subplots(1, 1, figsize=(8, 4))
         self.draw_canvas = FigureCanvasTkAgg(self.fig, master = self.plots.canvas)  
         self.draw_canvas.get_tk_widget().grid(row=0, column=0, sticky="w")                
-        self.ax1.set_title('Sample or Water')
-        self.ax1.set_xlabel('Time(s)')
-        self.ax1.set_ylabel('T (degC)')    
-        self.ax1.legend(loc="upper right")             
-        self.ax1.set_ylim(15, 50)
+        #self.ax1.set_title('Sample or Water')
+        #self.ax1.set_xlabel('Time(s)')
+        #self.ax1.set_ylabel('T (degC)')    
+        #self.ax1.legend(loc="upper right")             
+        #self.ax1.set_ylim(15, 50)
         self.ax1.grid()        
 
         try:
@@ -116,7 +116,7 @@ class Temperature_stabilisation_module():
         self.t_2_sample_before_radiator = T_sensor(name="T2: Sample before Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=25, y = 860)
         self.t_2_sample_before_radiator.gen_gui()        
 
-        self.t_3_water_before_radiator = T_sensor(name="T3: Water before Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=250, y = 860)
+        self.t_3_water_before_radiator = T_sensor(name="T3: Water before Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=230, y = 860)
         self.t_3_water_before_radiator.gen_gui()                
 
         self.t_4_fluid_after_radiator = T_sensor(name="T4: Fluid after Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=150, y = 420)
@@ -158,7 +158,7 @@ class Temperature_stabilisation_module():
         self.flow_cell = Element(name="Flow Cell", window=self.window, canvas_height = 80,canvas_width = 200, bg_color = "pale green",  x = 600, y= 520)        
         self.flow_cell.gen_gui()
 
-        self.process = Process(name="Flow Cell", window=self.window, canvas_height = 200,canvas_width = 350, bg_color = "#d9d9d9",  x = 450, y= 650, callback = self.tsm_run)        
+        self.process = Process(name="Flow Cell", window=self.window, canvas_height = 250, canvas_width = 370, bg_color = "#d9d9d9",  x = 440, y= 650, callback = self.tsm_run)        
         self.process.gen_gui()       
 
     def get_temperatures(self):
@@ -270,9 +270,11 @@ class Temperature_stabilisation_module():
     # Recursive function to monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
     def while_recirculate(self):
         # The target is the room temperature.
-        self.target_sample_temp = self.t_1_room.temperature + 5
+        self.target_sample_temp = self.process.gui_dict['scale_target_temp_DoubleVar'].get()
+        #self.target_sample_temp = self.t_1_room.temperature
         self.time_now = copy.deepcopy(time.time())      # Curent time
         self.rec_timeout = self.process.gui_dict['scale_timer_IntVar'].get()    # Get slider value in realtime.
+        self.pump.set_rpm(self.pump.gui_dict['rpm_status_IntVar'].get())
 
         # If the user unchecks the button or the timer runs out we stop the motor and return.
         if (self.process.enable_process == False) or self.rec_timeout < (self.time_now - self.time_start):  
@@ -286,8 +288,8 @@ class Temperature_stabilisation_module():
             self.update()      # This will automatically update the temperatures. 
             self.tsm_plot_sample_rec_temp()     # update plots. 
                        
-            # Temperature difference = room - target temperature.
-            temp_diff = round(abs(self.t_1_room.temperature  - self.target_sample_temp),2)            
+            # Temperature difference = recirculation point - target temperature.
+            temp_diff = round(abs(self.t_5_recirculation.temperature  - self.target_sample_temp),2)            
             # Take the avg of the time_diff
             self.fluid_temp_diff_list.append(temp_diff)
             self.fluid_temp_diff_list = self.fluid_temp_diff_list[-10:]   # Keep only latest 10 elements of the list.
@@ -301,7 +303,8 @@ class Temperature_stabilisation_module():
             else:                
                 print("while_recirculate(): Waiting for temperature to stabilise")
                 print("Target temp = ", round(self.target_sample_temp,2))
-                print("Current temp = ", round(self.t_1_room.temperature,2))
+                print("Current temp = ", round(self.t_5_recirculation.temperature,2))
+                self.process.gui_dict['label_temp_diff'].config(text="T diff = " + str(temp_diff) + " deg C")
 
         self.window.after(100,self.while_recirculate)
 
@@ -352,13 +355,13 @@ class Temperature_stabilisation_module():
         self.t_6_infuse_list.append(self.ardu_mega_slave.input_reg_list[12])
         
         # limit the list to 20 elements.
-        self.time_temperature_list = self.time_temperature_list[-20:]
-        self.t_1_room_list = self.t_1_room_list[-20:]
-        self.t_2_sample_before_radiator_list = self.t_2_sample_before_radiator_list[-20:]
-        self.t_3_water_before_radiator_list = self.t_3_water_before_radiator_list[-20:]
-        self.t_4_fluid_after_radiator_list = self.t_4_fluid_after_radiator_list[-20:]
-        self.t_5_recirculation_list = self.t_5_recirculation_list[-20:]
-        self.t_6_infuse_list = self.t_6_infuse_list[-20:]               
+        self.time_temperature_list = self.time_temperature_list[-100:]
+        self.t_1_room_list = self.t_1_room_list[-100:]
+        self.t_2_sample_before_radiator_list = self.t_2_sample_before_radiator_list[-100:]
+        self.t_3_water_before_radiator_list = self.t_3_water_before_radiator_list[-100:]
+        self.t_4_fluid_after_radiator_list = self.t_4_fluid_after_radiator_list[-100:]
+        self.t_5_recirculation_list = self.t_5_recirculation_list[-100:]
+        self.t_6_infuse_list = self.t_6_infuse_list[-100:]       
 
         # plotting the graph
         self.ax1.plot(self.time_temperature_list, self.t_1_room_list,'r')
@@ -368,7 +371,13 @@ class Temperature_stabilisation_module():
         self.ax1.plot(self.time_temperature_list, self.t_5_recirculation_list,'m')
         self.ax1.plot(self.time_temperature_list, self.t_6_infuse_list,'y')
         self.ax1.legend(['room','sample before radiator','water before radiator',"fluid after radiator", "Recirculation","Infusion"])
-        self.draw_canvas.draw()            
+        self.draw_canvas.draw()  
+
+        self.ax1.set_title('Sample or Water')
+        self.ax1.set_xlabel('Time(s)')
+        self.ax1.set_ylabel('T (degC)')    
+        self.ax1.legend(loc="upper right")             
+        self.ax1.set_ylim(15, 50)                
 
     def tsm_clear_plots(self):
         self.ax1.clear()        

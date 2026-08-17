@@ -7,7 +7,8 @@ class Modbus_Interface():
     def __init__(self):
         # 1. Set up your self.client (RS-485 / RTU)
         self.client = ModbusSerialClient(
-            port='/dev/ttyUSB0',  # Change this to your COM port (e.g., 'COM3' on Windows)
+            #port='/dev/ttyUSB0',  # Change this to your COM port (e.g., 'COM3' on Windows)
+            port = 'COM15',
             baudrate=9600,
             bytesize=8,
             parity='N',

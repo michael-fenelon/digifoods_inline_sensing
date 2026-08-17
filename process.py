@@ -41,7 +41,14 @@ class Process(Element):
         self.gui_dict['action_withdraw'] = Radiobutton(self.frame, text = "Whitdraw", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "withdraw", height = 1, width = width, bg=self.bg_color)
         self.gui_dict['action_recirculate'] = Radiobutton(self.frame, text = "Recirculate", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "recirculate", height = 1, width = width, bg=self.bg_color)
         self.gui_dict['action_infuse'] = Radiobutton(self.frame, text = "Infuse (Empty)", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "infuse", height = 1, width = width, bg=self.bg_color)
-        
+
+        self.gui_dict['label_target_temp'] = Label(self.frame, text="Target temp (deg C)")
+        self.gui_dict['scale_target_temp_DoubleVar'] = DoubleVar(value=30.0)
+        self.gui_dict['scale_target_temp'] = Scale(self.frame, variable = self.gui_dict['scale_target_temp_DoubleVar'],
+                                                                from_ = 15, to = 50, resolution = 0.1,
+                                                                orient = HORIZONTAL, length = 150, border = 1, width = 20, troughcolor = "white", bg=self.bg_color)  
+
+        self.gui_dict['label_target_timeout'] = Label(self.frame, text="Process time (s)")
         self.gui_dict['scale_timer_IntVar'] = IntVar(value=30)
         self.gui_dict['scale_timer'] = Scale(self.frame, variable = self.gui_dict['scale_timer_IntVar'],
                                                                 from_ = 1, to = 120, resolution = 1,
@@ -57,6 +64,8 @@ class Process(Element):
                                                     height = 1, 
                                                     width = width,
                                                     command = self.enable, bg=self.bg_color)                                                    
+
+        self.gui_dict['label_temp_diff'] = Label(self.frame, text="T diff = # deg C")
     
         self.canvas.place(x = self.x, y = self.y)        
         print("In Control " + self.name + " gen_gui(): Completed")
@@ -67,12 +76,16 @@ class Process(Element):
         self.gui_dict['water'].grid(row = 0, column = 1, sticky = "w")
         self.gui_dict['fluid'].grid(row = 1, column = 0, sticky = "w")
         self.gui_dict['air'].grid(row = 1, column = 1, sticky = "w")
-        self.gui_dict['action_withdraw'].grid(row = 2, column = 0, sticky = "w")
-        self.gui_dict['scale_timer'].grid(row = 2, column = 1, sticky = "w")
-        self.gui_dict['action_recirculate'].grid(row = 3, column = 0, sticky = "w")
-        self.gui_dict['action_infuse'].grid(row = 4, column = 0, sticky = "w")        
-        self.gui_dict['label_time'].grid(row = 4, column = 1, sticky = "w")
-        self.gui_dict['check_enable'].grid(row = 5, column = 0, columnspan = 2, sticky = "")
+        self.gui_dict['label_target_temp'].grid(row = 2, column = 0, sticky = "w")
+        self.gui_dict['scale_target_temp'].grid(row = 2, column = 1, sticky = "w")
+        self.gui_dict['label_target_timeout'].grid(row = 3, column = 0, sticky = "w")
+        self.gui_dict['scale_timer'].grid(row = 3, column = 1, sticky = "w")
+        self.gui_dict['label_time'].grid(row = 3, column = 2, sticky = "w")
+        self.gui_dict['action_withdraw'].grid(row = 4, column = 0, sticky = "w")        
+        self.gui_dict['action_recirculate'].grid(row = 5, column = 0, sticky = "w")
+        self.gui_dict['label_temp_diff'].grid(row = 5, column = 1, sticky = "w")
+        self.gui_dict['action_infuse'].grid(row = 6, column = 0, sticky = "w")                
+        self.gui_dict['check_enable'].grid(row = 7, column = 0, columnspan = 2, sticky = "")
 
     def enable(self):
         self.enable_process = self.gui_dict['check_enable_IntVar'].get()        
