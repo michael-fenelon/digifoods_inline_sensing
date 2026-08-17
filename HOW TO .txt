@@ -9,5 +9,18 @@ To activate the venv:
 To install from requirements.txt
     pip install -r requirements.txt
 
+# --------------------------------------------------------------------------------------------
+# While git commit we will experience this: ^X mode (^]^D^E^F^I^K^L^N^O^Ps^U^V^Y) since we are using vim and NOT using nano. F!
+
+# When you see this, just hit the ESC key to get out of insert mode. Then, type :wq (colon + w + q) and hit ENTER.
+#  This will save your changes and exit out of the editor.
+
+
+# Solution: https://teamtreehouse.com/community/trying-to-add-commit-messagegetting-x-mode-defiklnopsuvy-at-bottom-of-screenhelp
+
+# When pushing all branches to remote, use : git push origin --all
+
+# for some reason <git push origin '*:*'> didn't work
+
 
 
