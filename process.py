@@ -40,9 +40,9 @@ class Process(Element):
         self.gui_dict['action_withdraw_rec_infuse_StringVar'] = StringVar(value="withdraw")
         self.gui_dict['action_withdraw'] = Radiobutton(self.frame, text = "Whitdraw", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "withdraw", height = 1, width = width, bg=self.bg_color)
         self.gui_dict['action_recirculate'] = Radiobutton(self.frame, text = "Recirculate", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "recirculate", height = 1, width = width, bg=self.bg_color)
-        self.gui_dict['action_infuse'] = Radiobutton(self.frame, text = "Infuse", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "infuse", height = 1, width = width, bg=self.bg_color)
+        self.gui_dict['action_infuse'] = Radiobutton(self.frame, text = "Infuse (Empty)", variable = self.gui_dict['action_withdraw_rec_infuse_StringVar'] , value = "infuse", height = 1, width = width, bg=self.bg_color)
         
-        self.gui_dict['scale_timer_IntVar'] = IntVar(value=5)
+        self.gui_dict['scale_timer_IntVar'] = IntVar(value=30)
         self.gui_dict['scale_timer'] = Scale(self.frame, variable = self.gui_dict['scale_timer_IntVar'],
                                                                 from_ = 1, to = 120, resolution = 1,
                                                                 orient = HORIZONTAL, length = 150, border = 1, width = 20, troughcolor = "white", bg=self.bg_color)            

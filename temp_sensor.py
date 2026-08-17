@@ -11,7 +11,7 @@ class T_sensor(Element):
         self.gen_gui()
 
     def gen_gui(self):
-        self.gui_dict[self.name] = Label(self.frame, text = self.name + " (degC)", wraplength=self.canvas_width, fg = self.fg_color, bg = self.bg_color)
+        self.gui_dict[self.name] = Label(self.frame, text = self.name, wraplength=self.canvas_width, fg = self.fg_color, bg = self.bg_color)
         self.gui_dict['temperature'] = Label(self.frame, text = "---", fg = self.fg_color, bg = self.bg_color)
         # Placement of widgets for a valve on the canvas.
 

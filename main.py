@@ -129,6 +129,8 @@ if __name__ == "__main__":
     slave_3.canvas.grid(row = 0, column = 1, sticky = "nw", columnspan = 1)           
     slave_3.vbar.grid(row = 0, column = 2, sticky="ns", columnspan = 1, rowspan=1, padx= 10)
     plots.canvas.grid(row = 1, column = 1, sticky = "nw", columnspan = 1)  
+    
+    
 
     root_window.bind('<Return>', root_window_bind_callback )            # This gets the values entered in the gui after ENTER key is pressed.
     root_window.lift()       # Bring window forwards
@@ -144,6 +146,8 @@ if __name__ == "__main__":
     notebook.grid(row=0, column=0)
     notebook.bind("<<NotebookTabChanged>>", tab_selected)       # Bind a monitor to check if we change between Tabs.
     # root_window.grid_columnconfigure((0,1), weight=2, uniform="column")   # This spaces the frame equally in columns    
+    
+    # tsm.create_grid()
     root_window.mainloop()       # Blocking function.        
 
 
