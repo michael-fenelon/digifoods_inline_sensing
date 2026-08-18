@@ -11,6 +11,7 @@ class Process(Element):
                     coil_num = None,     
                     mi = None, 
                     rs485_gui_slave = None, 
+                    logger = None,
                     callback = None,
                     *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -19,6 +20,7 @@ class Process(Element):
         self.coil_num = coil_num                # The Coil_## for Set Valve positions
         self.mi = mi                            # modbus interface     
         self.rs485_gui_slave = rs485_gui_slave  # The arduino connected to the slave.
+        self.logger = logger
         self.callback = callback
         self.enable_process = False
         self.sample_or_water = ""
@@ -91,7 +93,7 @@ class Process(Element):
         self.enable_process = self.gui_dict['check_enable_IntVar'].get()        
         self.sample_or_water = self.gui_dict['sample_water_StringVar'].get()
         self.fluid_or_air = self.gui_dict['fluid_air_StringVar'].get()
-        self.action = self.gui_dict['action_withdraw_rec_infuse_StringVar'].get()     
+        self.action = self.gui_dict['action_withdraw_rec_infuse_StringVar'].get()            
 
         self.callback()  
 

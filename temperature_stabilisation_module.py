@@ -22,11 +22,6 @@ from pump import*
 from temp_sensor import*
 from process import*
 
-# Possible functions. 
-# withdraw / recirculate. 
-# air / fluid 
-# sample / water 
-
 # Alias tsm = = Temperature_stabilisation_module
 class Temperature_stabilisation_module():
     def __init__(self, window  = None, 
@@ -35,7 +30,8 @@ class Temperature_stabilisation_module():
                     canvas_height = 1000,
                     canvas_width = 800,
                     color = "#d9d9d9",
-                    plots = None ):
+                    plots = None,
+                    logger = None ):
 
         self.window = window    # root window from main.py
         self.canvas_height = canvas_height
@@ -49,10 +45,8 @@ class Temperature_stabilisation_module():
         self.canvas_main = tk.Canvas(self.window, bg=self.color, height = self.canvas_height, width = self.canvas_width, highlightthickness = 5)  # Main canvas to place all valves, pumps, elements...etc.
         self.frame = tk.Frame(self.canvas_main, width = self.canvas_width + 5, height = self.canvas_height + 5, background= self.color)        
         self.canvas_main.create_window( 5, 5, window = self.frame, anchor=tk.NW )          
-        
         self.plots = plots      # Since plots will need a different section on the GUI, the canvas needs to be from main.py. In main.py we place the plots. 
-        # self.color = "#d9d9d9"    # Default gray color of a widget print("Default color = ", self.gui_dict['Check_dict']['enable_tsm'].cget("bg"))                      
-
+        self.logger = logger
         self.time_start = 0
         self.time_now = 0
         self.target_sample_temp = 30
@@ -84,11 +78,6 @@ class Temperature_stabilisation_module():
         self.fig, (self.ax1) = plt.subplots(1, 1, figsize=(8, 4))
         self.draw_canvas = FigureCanvasTkAgg(self.fig, master = self.plots.canvas)  
         self.draw_canvas.get_tk_widget().grid(row=0, column=0, sticky="w")                
-        #self.ax1.set_title('Sample or Water')
-        #self.ax1.set_xlabel('Time(s)')
-        #self.ax1.set_ylabel('T (degC)')    
-        #self.ax1.legend(loc="upper right")             
-        #self.ax1.set_ylim(15, 50)
         self.ax1.grid()        
 
         try:
@@ -96,82 +85,91 @@ class Temperature_stabilisation_module():
         except:
             print("Slave Ardu-Mega not connected to RS485")
           
-    # Method to create a 2D grid on the canvas with spacing.           
-    # def create_grid(self):
-    #     self.canvas_main.create_line(0,0,1500,1500, fill="blue") #tags="grid_line")
-    #     self.window.update()
-    #     print("drew line")
-        
-        # for x in range(0,self.canvas_width, 100):
-        #     self.canvas_main.create_line(0,x,self.canvas_height,x, tags="grid_line")
-        #     self.canvas_main.create_line([(0,x),(self.canvas_height,x)], tags="grid_line")
-
     # Position all elements, pumps, valves...etc on canvas_main.
     # x axis points right, y axis points downwards.
     # Stuff is arranged w.r.t increasing y axis. 
     def gen_gui(self):
-        self.t_1_room = T_sensor(name="T1: Room", window=self.window, fg_color="blue", canvas_height = 50, canvas_width = 200, x=600, y = 25)
-        self.t_1_room.gen_gui()
+        try:
+            self.t_1_room = T_sensor(name="T1: Room", window=self.window, fg_color="blue", 
+                                    canvas_height = 50, canvas_width = 200, x=600, y = 25,
+                                    logger=self.logger)
+            self.t_1_room.gen_gui()
 
-        self.t_2_sample_before_radiator = T_sensor(name="T2: Sample before Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=25, y = 860)
-        self.t_2_sample_before_radiator.gen_gui()        
+            self.t_2_sample_before_radiator = T_sensor(name="T2: Sample before Radiator", window=self.window, fg_color="blue", 
+                                                        canvas_height = 80, canvas_width = 200, x=25, y = 860,
+                                                        logger=self.logger)
+            self.t_2_sample_before_radiator.gen_gui()        
 
-        self.t_3_water_before_radiator = T_sensor(name="T3: Water before Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=230, y = 860)
-        self.t_3_water_before_radiator.gen_gui()                
+            self.t_3_water_before_radiator = T_sensor(name="T3: Water before Radiator", window=self.window, fg_color="blue", 
+                                                        canvas_height = 80, canvas_width = 200, x=230, y = 860,
+                                                        logger=self.logger)
+            self.t_3_water_before_radiator.gen_gui()                
 
-        self.t_4_fluid_after_radiator = T_sensor(name="T4: Fluid after Radiator", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=150, y = 420)
-        self.t_4_fluid_after_radiator.gen_gui()                
+            self.t_4_fluid_after_radiator = T_sensor(name="T4: Fluid after Radiator", window=self.window, fg_color="blue", 
+                                                        canvas_height = 80, canvas_width = 200, x=150, y = 420,
+                                                        logger=self.logger)
+            self.t_4_fluid_after_radiator.gen_gui()                
 
-        self.t_5_recirculation = T_sensor(name="T5: Recirculation", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=375, y = 300)
-        self.t_5_recirculation.gen_gui()                
+            self.t_5_recirculation = T_sensor(name="T5: Recirculation", window=self.window, fg_color="blue", 
+                                                canvas_height = 80, canvas_width = 200, x=375, y = 300,
+                                                logger=self.logger)
+            self.t_5_recirculation.gen_gui()                
 
-        self.t_6_infuse = T_sensor(name="T6: Infusion to Flow Cell", window=self.window, fg_color="blue", canvas_height = 80, canvas_width = 200, x=600, y = 420)
-        self.t_6_infuse.gen_gui()                        
+            self.t_6_infuse = T_sensor(name="T6: Infusion to Flow Cell", window=self.window, fg_color="blue", 
+                                        canvas_height = 80, canvas_width = 200, x=600, y = 420,
+                                        logger=self.logger)
+            self.t_6_infuse.gen_gui()                        
 
-        self.heat_pump = Element(name="Heat Pump", window=self.window, canvas_height=50, canvas_width = 120, bg_color = "gray34",  x = 450, y= 10)        
-        self.heat_pump.gen_gui()
+            self.heat_pump = Element(name="Heat Pump", window=self.window, canvas_height=50, canvas_width = 120, bg_color = "gray34",  x = 450, y= 10)        
+            self.heat_pump.gen_gui()
 
-        self.pump = Pump(name="Pump 1", window=self.window, canvas_height = 100, canvas_width = 200, x = 150, y= 150,
-                            holding_reg_num = 0, coil_num = 0, ardu_uno_slave = self.pumps_slave)        
-        self.pump.gen_gui()
-        self.pump.set_rpm(25)
+            self.pump = Pump(name="Pump 1", window=self.window, canvas_height = 100, canvas_width = 200, x = 150, y= 150,
+                                holding_reg_num = 0, coil_num = 0, ardu_uno_slave = self.pumps_slave, logger=self.logger)        
+            self.pump.gen_gui()
+            self.pump.set_rpm(25)
 
-        self.valve_1_A = Valve(name="Valve A", window=self.window, canvas_height = 100, canvas_width = 200, x=600, y=300,
-                            holding_reg_num = 1, coil_num = 3, ardu_mega_slave = self.ardu_mega_slave) 
-        self.valve_1_A.gen_gui()   
-        
-        self.valve_2_B = Valve(name="Valve B", window=self.window, canvas_height = 100, canvas_width = 200, x=150, y=300,
-                            holding_reg_num=2, coil_num=3, ardu_mega_slave = self.ardu_mega_slave)  
-        self.valve_2_B.gen_gui()  
+            self.valve_1_A = Valve(name="Valve A", window=self.window, canvas_height = 100, canvas_width = 200, x=600, y=300,
+                                holding_reg_num = 1, coil_num = 3, ardu_mega_slave = self.ardu_mega_slave, logger=self.logger) 
+            self.valve_1_A.gen_gui()   
+            
+            self.valve_2_B = Valve(name="Valve B", window=self.window, canvas_height = 100, canvas_width = 200, x=150, y=300,
+                                holding_reg_num=2, coil_num=3, ardu_mega_slave = self.ardu_mega_slave, logger=self.logger)  
+            self.valve_2_B.gen_gui()  
 
-        self.radiator = Element(name="Radiator", window=self.window, canvas_height = 60, canvas_width = 100, bg_color = "orange",  x = 200, y= 520)        
-        self.radiator.gen_gui()
+            self.radiator = Element(name="Radiator", window=self.window, canvas_height = 60, canvas_width = 100, bg_color = "orange",  x = 200, y= 520)        
+            self.radiator.gen_gui()
 
-        self.valve_3_Air_fluid = Valve(name="Valve Air/Fluid", canvas_height = 100, canvas_width = 200, window=self.window, x=150, y=600,
-                                    holding_reg_num=3, coil_num=3, ardu_mega_slave = self.ardu_mega_slave)   
-        self.valve_3_Air_fluid.gen_gui()              
-        
-        self.valve_4_sample_water = Valve(name="Valve Sample/Water", canvas_height = 100, canvas_width = 200, window=self.window, x=150, y=750,
-                                    holding_reg_num=4, coil_num=3, ardu_mega_slave = self.ardu_mega_slave)   
-        self.valve_4_sample_water.gen_gui()
-        
-        self.flow_cell = Element(name="Flow Cell", window=self.window, canvas_height = 80,canvas_width = 200, bg_color = "pale green",  x = 600, y= 520)        
-        self.flow_cell.gen_gui()
+            self.valve_3_Air_fluid = Valve(name="Valve Air/Fluid", canvas_height = 100, canvas_width = 200, window=self.window, x=150, y=600,
+                                        holding_reg_num=3, coil_num=3, ardu_mega_slave = self.ardu_mega_slave, logger=self.logger)   
+            self.valve_3_Air_fluid.gen_gui()              
+            
+            self.valve_4_sample_water = Valve(name="Valve Sample/Water", canvas_height = 100, canvas_width = 200, window=self.window, x=150, y=750,
+                                        holding_reg_num=4, coil_num=3, ardu_mega_slave = self.ardu_mega_slave, logger=self.logger)   
+            self.valve_4_sample_water.gen_gui()
+            
+            self.flow_cell = Element(name="Flow Cell", window=self.window, canvas_height = 80,canvas_width = 200, bg_color = "pale green",  x = 600, y= 520)        
+            self.flow_cell.gen_gui()
 
-        self.process = Process(name="Flow Cell", window=self.window, canvas_height = 250, canvas_width = 370, bg_color = "#d9d9d9",  x = 440, y= 650, callback = self.tsm_run)        
-        self.process.gen_gui()       
+            self.process = Process(name="Flow Cell", window=self.window, canvas_height = 250, canvas_width = 400, bg_color = "#d9d9d9",  x = 440, y= 650,
+                                    callback = self.tsm_run, logger=self.logger)        
+            self.process.gen_gui()      
+        except Exception as e:
+            self.logger.warning("In tsm.gen_gui() " + str(e) )
 
     def get_temperatures(self):
-        self.ardu_mega_slave.coils_list[4] = 1
-        self.ardu_mega_slave.update_slave_via_reg_list()
-        self.ardu_mega_slave.update_gui()
+        try:
+            self.ardu_mega_slave.coils_list[4] = 1
+            self.ardu_mega_slave.update_slave_via_reg_list()
+            self.ardu_mega_slave.update_gui()
 
-        self.t_1_room.update_temp(self.ardu_mega_slave.input_reg_list[7])
-        self.t_2_sample_before_radiator.update_temp(self.ardu_mega_slave.input_reg_list[8])
-        self.t_3_water_before_radiator.update_temp(self.ardu_mega_slave.input_reg_list[9])
-        self.t_4_fluid_after_radiator.update_temp(self.ardu_mega_slave.input_reg_list[10])
-        self.t_5_recirculation.update_temp(self.ardu_mega_slave.input_reg_list[11])
-        self.t_6_infuse.update_temp(self.ardu_mega_slave.input_reg_list[12])
+            self.t_1_room.update_temp(self.ardu_mega_slave.input_reg_list[7])
+            self.t_2_sample_before_radiator.update_temp(self.ardu_mega_slave.input_reg_list[8])
+            self.t_3_water_before_radiator.update_temp(self.ardu_mega_slave.input_reg_list[9])
+            self.t_4_fluid_after_radiator.update_temp(self.ardu_mega_slave.input_reg_list[10])
+            self.t_5_recirculation.update_temp(self.ardu_mega_slave.input_reg_list[11])
+            self.t_6_infuse.update_temp(self.ardu_mega_slave.input_reg_list[12])
+        except Exception as e:
+            self.logger.critical("In tsm.get_temperatures :" + str(e) )
 
     def tsm_run(self):
         print("IN TSM !")
@@ -193,22 +191,26 @@ class Temperature_stabilisation_module():
             else:
                 raise ValueError("In tsm(): Invalid value for fluid or air valve")
 
+            self.window.after(1000, self.wait())    # Need a delay: wait until the servos move            
+
             # Decide between withdraw / recirculate / infuse.
             # Withdraw: Extract either sample or water via the radiator, through Cu blocks and discharge to Flow Cell.
             # Empty: After withdrawal, there's sample or water in the radiator and tubing, we switch the valve_3 to air and draw the remain fluid into the Cu blocks.
             # Recirculate: Recirculate the fluid available in the line. 
             # Infuse: Set valve 3 to air, valve 
             if self.process.action == "withdraw":                                
-                self.process.gui_dict['scale_timer_IntVar'].set(7)
+                self.process.gui_dict['scale_timer_IntVar'].set(6)  # Withdraw only for 7 seconds. 
                 self.valve_1_A.set_valve_pos(2)       
                 self.valve_2_B.set_valve_pos(2)        
                 self.update()        
-                self.window.after(1000, self.wait())    # Need a delay: wait until the servos move
-                self.pump.set_rpm(100)  # self.pump.set_rpm( self.pump.gui_dict['rpm_status_IntVar'].get() )                  # Pump's rpm from slider.                         
+                self.window.after(1000, self.wait())    # Delay 1s: wait until the servos move
+                self.pump.set_rpm(100)  # Pump's rpm from slider, hard coded to max for now. 
                 self.update()
                 self.time_start = copy.deepcopy(time.time())      # Start a timer                
                 self.tsm_clear_plots()     
-                print("In tsm_run: withdrawal mode")     
+                print("In tsm_run: withdrawal mode")  
+                self.logger.info("\n")
+                self.logger.info("In tsm_run: START: Withdrawal mode - " + self.process.sample_or_water + " - " + self.process.fluid_or_air)                   
                 self.while_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
             elif self.process.action == "recirculate":                     
                 self.process.gui_dict['scale_timer_IntVar'].set(30)
@@ -220,7 +222,9 @@ class Temperature_stabilisation_module():
                 self.time_start = copy.deepcopy(time.time())      # Start a timer
                 self.fluid_temp_diff_list = []     # reset the list to monitor temp_diff
                 self.tsm_clear_plots()
-                print("In tsm_run: withdrawal mode")     
+                print("In tsm_run: Recirculation mode")     
+                self.logger.info("\n")
+                self.logger.info("In tsm_run: START: Recirculation mode - " + self.process.sample_or_water + " - " + self.process.fluid_or_air)   
                 self.while_recirculate()    
             elif self.process.action == "infuse":
                 self.process.gui_dict['scale_timer_IntVar'].set(3)
@@ -234,7 +238,9 @@ class Temperature_stabilisation_module():
                 self.update()
                 self.time_start = copy.deepcopy(time.time())      # Start a timer                
                 self.tsm_clear_plots()                  
-                print("In tsm_run: Infusion mode")     
+                print("In tsm_run: Infusion mode")    
+                self.logger.info("\n")
+                self.logger.info("In tsm_run: START: Infusion mode - " + self.process.sample_or_water + " - " + self.process.fluid_or_air)   
                 self.while_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
             else:
                 raise ValueError("In tsm(): Invalid action value.")
@@ -255,17 +261,16 @@ class Temperature_stabilisation_module():
         if (self.process.enable_process == False) or self.withdraw_timeout < (self.time_now - self.time_start):  
             self.process.set_time( str(round(self.time_now - self.time_start,2)) )
             self.pump.set_rpm(0)                 
-            self.update()            
+            self.update()    
+            self.logger.info("In tsm_run.while_witthdraw: User abort or Timeout\n")        
             print("In while_withdraw(): User aborted process or timeout")
             return
         else:
             self.process.set_time( str(round(self.time_now - self.time_start,2)) )            
             self.tsm_plot_sample_rec_temp()
+            self.logger.info("In tsm_run.while_withdraw: On going...")
 
         self.window.after(100,self.while_withdraw)
-
-    def empty(self):
-        pass
 
     # Recursive function to monitor the temperature and keep the pump running until the temperature is achieved or timeout or the user stops recicrulation.
     def while_recirculate(self):
@@ -281,7 +286,8 @@ class Temperature_stabilisation_module():
             self.process.set_time(round(self.time_now - self.time_start,2))   
             self.pump.set_rpm(0)               
             self.update()            
-            print("In while_recirculate(): User aborted process or timeout")           
+            print("In while_recirculate(): User aborted process or timeout")       
+            self.logger.info("In tsm_run.while_recirculate: User abort or Timeout\n")    
             return
         else:  
             self.process.set_time(round(self.time_now - self.time_start,2))                           
@@ -299,48 +305,17 @@ class Temperature_stabilisation_module():
                 print("In while_recirculate(), Sample temperature is stabilised ", temp_diff)
                 self.pump.set_rpm(0)                
                 self.update()                       
+                self.logger.info("In tsm_run.while_recirculate: Temperature stabilised " + str(temp_diff) + "\n")
                 return            
             else:                
                 print("while_recirculate(): Waiting for temperature to stabilise")
                 print("Target temp = ", round(self.target_sample_temp,2))
                 print("Current temp = ", round(self.t_5_recirculation.temperature,2))
                 self.process.gui_dict['label_temp_diff'].config(text="T diff = " + str(temp_diff) + " deg C")
+                self.logger.info("In tsm_run.while_recirculate: Target temp = " + str(round(self.target_sample_temp,2)))
+                self.logger.info("In tsm_run.while_recirculate: Recirculation on going..., temp_diff = " + str(temp_diff) + "\n")
 
         self.window.after(100,self.while_recirculate)
-
-    # def tsm_infusion_to_flow_cell(self):
-    #     if self.gui_dict['Check_dict']['infuse_sample_or_water_IntVar'].get() == True:
-    #         print("In tsm_infusion_to_flow_cell(): START")
-
-    #         # Disable the infuse sample / water RadioButton until user aborts or timeout.
-    #         self.gui_dict['Radio_dict']['infuse_sample'].config(state = 'disabled')
-    #         self.gui_dict['Radio_dict']['infuse_water'].config(state = 'disabled')
-    #         self.gui_dict['Check_dict']['process_sample'].config(state = 'disabled')
-    #         self.gui_dict['Check_dict']['process_water'].config(state = 'disabled')
-            
-    #         # When we want to infuse the sample to the flow cell, 
-    #         # We can set the sample section to "withdraw" and set the Process Sample check box to True.            
-    #         if self.gui_dict['Radio_dict']['infuse_sample_water_StringVar'].get() == "sample":
-    #             self.gui_dict['Radio_dict']['sample_withdraw_recirculate_StringVar'].set("withdraw") 
-    #             self.gui_dict['Check_dict']['process_sample_IntVar'].set(1)     # Setting a value of 1 in a checkbox != actually clicking the checkbox.
-    #             self.gui_dict['Check_dict']['process_water_IntVar'].set(0)      # Setting a value of 1 in a checkbox != actually clicking the checkbox.
-    #             self.tsm_process_sample()              
-            
-    #         # When we want to infuse the water to the flow cell, 
-    #         # We can set the water section to "withdraw" and set the Process water check box to True.            
-    #         elif self.gui_dict['Radio_dict']['infuse_sample_water_StringVar'].get() == "water":
-    #             self.gui_dict['Radio_dict']['water_withdraw_recirculate_StringVar'].set("withdraw") 
-    #             self.gui_dict['Check_dict']['process_sample_IntVar'].set(0)     # Setting a value of 1 in a checkbox != actually clicking the checkbox.
-    #             self.gui_dict['Check_dict']['process_water_IntVar'].set(1)      # Setting a value of 1 in a checkbox != actually clicking the checkbox.
-    #             self.tsm_process_water()               
-    #     else:
-    #         print("In tsm_infusion_to_flow_cell(): STOP")     
-    #         self.gui_dict['Scale_dict']['set_pump_1_IntVar'].set(value = 1)    # Set pump 1 RPM to OFF  
-    #         self.gui_dict['Scale_dict']['set_pump_2_IntVar'].set(value = 1)    # Set pump 2 RPM to OFF  
-    #         self.update()    
-    #         self.gui_dict['Check_dict']['process_sample_IntVar'].set(0)     # Setting a value of 1 in a checkbox != actually clicking the checkbox.
-    #         self.gui_dict['Check_dict']['process_water_IntVar'].set(0)      # Setting a value of 1 in a checkbox != actually clicking the checkbox.            
-    #         self.set_to_normal()
 
     def tsm_plot_sample_rec_temp(self):                
         time = dt.datetime.now().minute + (dt.datetime.now().second/100)

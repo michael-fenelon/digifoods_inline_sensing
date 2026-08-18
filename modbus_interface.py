@@ -2,26 +2,36 @@
 # library: https://pymodbus.readthedocs.io/en/latest/
 import time
 from pymodbus.client import ModbusSerialClient
+import sys
 
 class Modbus_Interface():
-    def __init__(self):
-        # 1. Set up your self.client (RS-485 / RTU)
-        self.client = ModbusSerialClient(
-            #port='/dev/ttyUSB0',  # Change this to your COM port (e.g., 'COM3' on Windows)
-            port = 'COM15',
-            baudrate=9600,
-            bytesize=8,
-            parity='N',
-            stopbits=1,
-            timeout=1            # Wait up to 1 second for a response
-        ) 
-
+    def __init__(self, port, logger):
+        self.logger = logger
+        try:
+            # 1. Set up your self.client (RS-485 / RTU)
+            self.client = ModbusSerialClient(
+                #port='/dev/ttyUSB0',  # Change this to your COM port (e.g., 'COM3' on Windows)
+                port = port,
+                baudrate=9600,
+                bytesize=8,
+                parity='N',
+                stopbits=1,
+                timeout=1            # Wait up to 1 second for a response
+            ) 
+            # logger.info("Connected to USB-RS485 adapter.")
+        except Exception as e:
+            logger.warning("Could not connect to USB-RS485 adapter")
+            
         # https://stackoverflow.com/questions/55662896/how-should-negative-numbers-be-represented-in-the-pymodbus-input-register
         # This has been removed and changed to https://pymodbus.readthedocs.io/en/latest/source/client.html#pymodbus.client.mixin.ModbusClientMixin.convert_from_registers
 
         # 2. Open the connection
-        self.connection = self.client.connect()
-        print("Connection ", self.connection)
+        try:
+            self.connection = self.client.connect()
+            logger.info("Connection open: TRUE")
+        except Exception as e:
+            logger.warning("Connection open: FALSE")
+        # print("Connection ", self.connection)
 
     def test(self):
         if self.connection:

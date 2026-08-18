@@ -10,12 +10,14 @@ class Valve(Element):
                     coil_num = None,     
                     mi = None, 
                     ardu_mega_slave = None, 
+                    logger = None,
                     *args, **kwargs):
         super().__init__(*args, **kwargs)        
         self.holding_reg_num = holding_reg_num  # Holding reg num of the valve from XLSX sheet.
         self.coil_num = coil_num                # The Coil_## for Set Valve positions
         self.mi = mi                            # modbus interface     
         self.ardu_mega_slave = ardu_mega_slave  # The arduino connected to the slave.
+        self.logger = logger
         self.valve_pos = 1  # Can be 1 or 2 only
         self.valve_min_microsec = 0     # PWM value for valve at pos 1
         self.valve_max_microsec = 0     # PWM value for valve at pos 2
@@ -47,14 +49,17 @@ class Valve(Element):
         print("In valve " + self.name + " gen_gui(): Completed")
 
     # Get a value 1 or 2 from master, update the holding registers respectively. 
+    # WARNING: This funciton is only visualisation, the state doesn't refect the current state of the valve since there's no feeback.
     def set_valve_pos(self, pos = 1):
         self.valve_pos = pos        # This holds the most updated status of the valve, we don't need to read from the gui widget.
         if self.valve_pos == 1:
             self.ardu_mega_slave.holding_reg_list[self.holding_reg_num] = self.valve_min_microsec
             self.gui_dict['position_status_IntVar'].set(self.valve_pos)
+            self.logger.info("In " + self.name + ", pos at " + str(self.valve_pos) + "("+ str(self.valve_min_microsec) + " microsec)")
         elif self.valve_pos == 2:
             self.ardu_mega_slave.holding_reg_list[self.holding_reg_num] = self.valve_max_microsec
             self.gui_dict['position_status_IntVar'].set(self.valve_pos)
+            self.logger.info("In " + self.name + ", pos at " + str(self.valve_pos) + "("+ str(self.valve_max_microsec) + " microsec)")
         else:
             raise ValueError("In Valve " + str(self.name) + " , ValueError:Invalid servo position")
     

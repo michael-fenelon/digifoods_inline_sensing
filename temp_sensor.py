@@ -5,8 +5,9 @@ import tkinter as tk
 import copy
 from element import*
 class T_sensor(Element):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logger = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.logger = logger
         self.temperature = 0
         self.gen_gui()
 
@@ -26,4 +27,6 @@ class T_sensor(Element):
     def update_temp(self, value):
         self.temperature = value
         self.gui_dict['temperature'].config(text = str( round(value,2) ) + " degC")
+        self.logger.info(self.name + " " + str(self.temperature))
+        
 

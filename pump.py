@@ -13,6 +13,7 @@ class Pump(Element):
                         coil_num = None, 
                         mi = None,
                         ardu_uno_slave = None,
+                        logger = None,
                         *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rpm = 0
@@ -21,6 +22,7 @@ class Pump(Element):
         self.coil_num = coil_num
         self.mi = mi
         self.ardu_uno_slave = ardu_uno_slave
+        self.logger = logger
         # print("self.ardu_uno_slave ", ardu_uno_slave)
         # self.gen_gui()        # Some issue with MRO when uncommented             
             
@@ -61,11 +63,14 @@ class Pump(Element):
         self.rpm = self.gui_dict['rpm_status'].get()
         print("In pump ", self.name, " status = ", self.enable, " , RPM = ", self.rpm)
     
-    # Get a value from master, update the holding reg list and the gui
+    # Get a value from master, update the holding reg list and this child gui
+    # WARNING: This function is only visualisation, its doesn't refect the actual state of the pump RPM, there's no feedback.
     def set_rpm(self, value):
         self.ardu_uno_slave.coils_list[self.coil_num] = 1
         self.ardu_uno_slave.holding_reg_list[self.holding_reg_num] = value
         self.gui_dict['rpm_status_IntVar'].set(value)
+        self.rpm = value
+        self.logger.info("In " + self.name + ", set RPM to " + str(self.rpm))
 
 def root_window_bind_callback():
     print("In root_window_bind_callback():  ...")
