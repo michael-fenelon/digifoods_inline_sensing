@@ -4,6 +4,7 @@ Create a venv:
     python -m venv venv
 
 To activate the venv:
+    .\venv\Scripts\activate.bat
     venv\Scripts\activate
 
 To install from requirements.txt

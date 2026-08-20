@@ -151,8 +151,9 @@ class Temperature_stabilisation_module():
             self.flow_cell.gen_gui()
 
             self.process = Process(name="Flow Cell", window=self.window, canvas_height = 250, canvas_width = 400, bg_color = "#d9d9d9",  x = 440, y= 650,
-                                    callback = self.tsm_run, logger=self.logger)        
+                                    callback = self.tsm_run, logger=self.logger)                 
             self.process.gen_gui()      
+            self.process.gui_dict['scale_timer'].config(to = self.rec_timeout)  # Change the slider limit dynamically.
         except Exception as e:
             self.logger.warning("In tsm.gen_gui() " + str(e) )
 
@@ -213,7 +214,7 @@ class Temperature_stabilisation_module():
                 self.logger.info("In tsm_run: START: Withdrawal mode - " + self.process.sample_or_water + " - " + self.process.fluid_or_air)                   
                 self.while_withdraw()    # We need to move the while True loop to a recursive function such that TK GUI's widgets are active.
             elif self.process.action == "recirculate":                     
-                self.process.gui_dict['scale_timer_IntVar'].set(30)
+                self.process.gui_dict['scale_timer_IntVar'].set(self.rec_timeout)
                 self.valve_1_A.set_valve_pos(1)
                 self.valve_2_B.set_valve_pos(1)                           
                 self.update()
@@ -282,13 +283,20 @@ class Temperature_stabilisation_module():
         self.pump.set_rpm(self.pump.gui_dict['rpm_status_IntVar'].get())
 
         # If the user unchecks the button or the timer runs out we stop the motor and return.
-        if (self.process.enable_process == False) or self.rec_timeout < (self.time_now - self.time_start):  
+        if (self.process.enable_process == False):  
             self.process.set_time(round(self.time_now - self.time_start,2))   
             self.pump.set_rpm(0)               
             self.update()            
-            print("In while_recirculate(): User aborted process or timeout")       
-            self.logger.info("In tsm_run.while_recirculate: User abort or Timeout\n")    
+            print("In while_recirculate(): User aborted process ")       
+            self.logger.info("In tsm_run.while_recirculate: User aborted recirculation\n")    
             return
+        elif self.rec_timeout < (self.time_now - self.time_start):
+            self.process.set_time(round(self.time_now - self.time_start,2))   
+            self.pump.set_rpm(0)               
+            self.update()            
+            print("In while_recirculate(): Timeout")       
+            self.logger.info("In tsm_run.while_recirculate: Timeout " + str(round(self.time_now - self.time_start,2))+  "\n")    
+            return        
         else:  
             self.process.set_time(round(self.time_now - self.time_start,2))                           
             self.update()      # This will automatically update the temperatures. 
@@ -298,10 +306,11 @@ class Temperature_stabilisation_module():
             temp_diff = round(abs(self.t_5_recirculation.temperature  - self.target_sample_temp),2)            
             # Take the avg of the time_diff
             self.fluid_temp_diff_list.append(temp_diff)
-            self.fluid_temp_diff_list = self.fluid_temp_diff_list[-10:]   # Keep only latest 10 elements of the list.
+            self.fluid_temp_diff_list = self.fluid_temp_diff_list[-50:]   # Keep only latest 10 elements of the list.
             avg = np.mean(self.fluid_temp_diff_list)                       # use the average of samples to decide if the temperature is stabilised.
-            # If the avg temp_diff is less than a tolerance value, we exit the recirculation.
-            if (avg <= self.temp_diff_tol):                
+            # If the avg temp_diff is less than a tolerance value and the length of the list is, we exit the recirculation.
+            # We use the len(self.fluid_temp_diff_list) also to ensure we have a at least N samples before exiting.
+            if (avg <= self.temp_diff_tol) and (len(self.fluid_temp_diff_list) == 50):                
                 print("In while_recirculate(), Sample temperature is stabilised ", temp_diff)
                 self.pump.set_rpm(0)                
                 self.update()                       
@@ -311,6 +320,7 @@ class Temperature_stabilisation_module():
                 print("while_recirculate(): Waiting for temperature to stabilise")
                 print("Target temp = ", round(self.target_sample_temp,2))
                 print("Current temp = ", round(self.t_5_recirculation.temperature,2))
+                print("len(self.fluid_temp_diff_list) ", len(self.fluid_temp_diff_list))
                 self.process.gui_dict['label_temp_diff'].config(text="T diff = " + str(temp_diff) + " deg C")
                 self.logger.info("In tsm_run.while_recirculate: Target temp = " + str(round(self.target_sample_temp,2)))
                 self.logger.info("In tsm_run.while_recirculate: Recirculation on going..., temp_diff = " + str(temp_diff) + "\n")
@@ -352,7 +362,7 @@ class Temperature_stabilisation_module():
         self.ax1.set_xlabel('Time(s)')
         self.ax1.set_ylabel('T (degC)')    
         self.ax1.legend(loc="upper right")             
-        self.ax1.set_ylim(15, 50)                
+        self.ax1.set_ylim(15, 80)                
 
     def tsm_clear_plots(self):
         self.ax1.clear()        

@@ -1,12 +1,7 @@
 
 # import all components from the tkinter library
 from tkinter import *
-# from tkinter import filedialog
-# from tkinter.filedialog import asksaveasfile
-# from os import walk
-# from tkinter import messagebox
 import tkinter as tk
-# import tkinter.font as tkFont
 from tkinter import ttk
 import copy
 import time 
@@ -54,7 +49,7 @@ if __name__ == "__main__":
     # Change the path based on OS
     if sys.platform == "win32":
         print("Running on Windows")
-        path = "C:/Desktop/sample_preprocessing_log/"
+        path = "C:\\Users\\mife\\OneDrive - Norwegian University of Life Sciences\\Desktop\\sample_preprocessing_log\\"        
         port = "COM15"
     elif sys.platform.startswith("linux"):
         print("Running on Linux")
@@ -63,8 +58,9 @@ if __name__ == "__main__":
     else:
         print(f"Running on another OS: {sys.platform}")
 
-    prefix = str(datetime.now())    
-    logging.basicConfig(filename= path + prefix + "_Log.log",
+    prefix =  datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # prefix = str(datetime.now())  ## Error in windows because of :    
+    filename =  path + prefix + "_Log.log"
+    logging.basicConfig(filename = filename,
                         format='%(asctime)s %(levelname)s: %(message)s',
                         filemode='w')
     logger = logging.getLogger()
