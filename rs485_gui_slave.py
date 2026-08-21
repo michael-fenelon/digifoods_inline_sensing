@@ -42,7 +42,7 @@ class rs485_gui_slave():
             # So we create a Frame and put it on a canvas so that the frame and canvas become scrollable.
 
             self.canvas = tk.Canvas(self.window, bg="white", height = self.canvas_height, width = self.canvas_width, background= "white",  highlightthickness = 5)  
-            self.frame = tk.Frame(self.canvas, width = self.canvas_width-10, height = self.canvas_height-10, background= self.color)        
+            self.frame = tk.Frame(self.canvas, width = self.canvas_width-5, height = self.canvas_height-10, background= self.color)        
             self.canvas.create_window( 5, 5, window = self.frame, anchor=tk.NW )                       
             self.vbar = tk.Scrollbar(self.window, orient = 'vertical', command = self.canvas.yview, width = 30)        
             # vbar = tk.Scrollbar(self.frame, orient = 'vertical', command = self.canvas.yview)        
@@ -249,8 +249,8 @@ class rs485_gui_slave():
 
         # Update button: Large vertical button used and command/callback to read all the holding register entries, update the holding_reg_list and send value to the slave.
         # We use a button so that only ONE slave uses the RS485 line at a time; avoids RS485 communication conflicts between slaves.
-        self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "update", command = self.update_slave_via_gui, wraplength = 50) 
-        self.gui_dict['Button_dict']['update'].grid(row = 4, column = 3, sticky = "nse", pady = 2, columnspan = 1, rowspan = self.row_counter)
+        self.gui_dict['Button_dict']['update'] = Button(self.frame, text = "Update", command = self.update_slave_via_gui, wraplength = 50) 
+        self.gui_dict['Button_dict']['update'].grid(row = 4, column = 3, sticky = "nsw", pady = 2, columnspan = 1, rowspan = self.row_counter)
 
     # Callback that gets all the values from the coil Checkboxes, Scale/Slider, Entry boxes and update the values in the slave. 
     # Does sanity check for each entry and update the holding_reg.    

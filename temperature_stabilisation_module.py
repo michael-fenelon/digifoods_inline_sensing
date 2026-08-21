@@ -92,32 +92,32 @@ class Temperature_stabilisation_module():
         try:
             self.t_1_room = T_sensor(name="T1: Room", window=self.window, fg_color="blue", 
                                     canvas_height = 50, canvas_width = 200, x=600, y = 25,
-                                    logger=self.logger)
+                                    logger=self.logger, offset = 1.39)
             self.t_1_room.gen_gui()
 
-            self.t_2_sample_before_radiator = T_sensor(name="T2: Sample before Radiator", window=self.window, fg_color="blue", 
+            self.t_2_sample_before_radiator = T_sensor(name="T2: Sample before module", window=self.window, fg_color="blue", 
                                                         canvas_height = 80, canvas_width = 200, x=25, y = 860,
-                                                        logger=self.logger)
+                                                        logger=self.logger, offset = 1.39)
             self.t_2_sample_before_radiator.gen_gui()        
 
-            self.t_3_water_before_radiator = T_sensor(name="T3: Water before Radiator", window=self.window, fg_color="blue", 
+            self.t_3_water_before_radiator = T_sensor(name="T3: Water before module", window=self.window, fg_color="blue", 
                                                         canvas_height = 80, canvas_width = 200, x=230, y = 860,
-                                                        logger=self.logger)
+                                                        logger=self.logger, offset = 0.9)
             self.t_3_water_before_radiator.gen_gui()                
 
-            self.t_4_fluid_after_radiator = T_sensor(name="T4: Fluid after Radiator", window=self.window, fg_color="blue", 
+            self.t_4_fluid_after_radiator = T_sensor(name="T4: NA", window=self.window, fg_color="blue", 
                                                         canvas_height = 80, canvas_width = 200, x=150, y = 420,
-                                                        logger=self.logger)
+                                                        logger=self.logger, offset = 0.9)
             self.t_4_fluid_after_radiator.gen_gui()                
 
             self.t_5_recirculation = T_sensor(name="T5: Recirculation", window=self.window, fg_color="blue", 
                                                 canvas_height = 80, canvas_width = 200, x=375, y = 300,
-                                                logger=self.logger)
+                                                logger=self.logger, offset = 1.19)
             self.t_5_recirculation.gen_gui()                
 
             self.t_6_infuse = T_sensor(name="T6: Infusion to Flow Cell", window=self.window, fg_color="blue", 
                                         canvas_height = 80, canvas_width = 200, x=600, y = 420,
-                                        logger=self.logger)
+                                        logger=self.logger, offset = 1.69)
             self.t_6_infuse.gen_gui()                        
 
             self.heat_pump = Element(name="Heat Pump", window=self.window, canvas_height=50, canvas_width = 120, bg_color = "gray34",  x = 450, y= 10)        
@@ -136,8 +136,8 @@ class Temperature_stabilisation_module():
                                 holding_reg_num=2, coil_num=3, ardu_mega_slave = self.ardu_mega_slave, logger=self.logger)  
             self.valve_2_B.gen_gui()  
 
-            self.radiator = Element(name="Radiator", window=self.window, canvas_height = 60, canvas_width = 100, bg_color = "orange",  x = 200, y= 520)        
-            self.radiator.gen_gui()
+            # self.module = Element(name="Radiator", window=self.window, canvas_height = 60, canvas_width = 100, bg_color = "orange",  x = 200, y= 520)        
+            # self.module.gen_gui()
 
             self.valve_3_Air_fluid = Valve(name="Valve Air/Fluid", canvas_height = 100, canvas_width = 200, window=self.window, x=150, y=600,
                                         holding_reg_num=3, coil_num=3, ardu_mega_slave = self.ardu_mega_slave, logger=self.logger)   
@@ -157,6 +157,8 @@ class Temperature_stabilisation_module():
         except Exception as e:
             self.logger.warning("In tsm.gen_gui() " + str(e) )
 
+    # Get raw/uncalibrated values from Ardu-mega
+    # Calibrated values are processed in temp_sensor.update_temp() 
     def get_temperatures(self):
         try:
             self.ardu_mega_slave.coils_list[4] = 1
@@ -195,8 +197,8 @@ class Temperature_stabilisation_module():
             self.window.after(1000, self.wait())    # Need a delay: wait until the servos move            
 
             # Decide between withdraw / recirculate / infuse.
-            # Withdraw: Extract either sample or water via the radiator, through Cu blocks and discharge to Flow Cell.
-            # Empty: After withdrawal, there's sample or water in the radiator and tubing, we switch the valve_3 to air and draw the remain fluid into the Cu blocks.
+            # Withdraw: Extract either sample or water via the module, through Cu blocks and discharge to Flow Cell.
+            # Empty: After withdrawal, there's sample or water in the module and tubing, we switch the valve_3 to air and draw the remain fluid into the Cu blocks.
             # Recirculate: Recirculate the fluid available in the line. 
             # Infuse: Set valve 3 to air, valve 
             if self.process.action == "withdraw":                                
@@ -332,12 +334,21 @@ class Temperature_stabilisation_module():
         self.time_temperature_list.append(time)     # X axis
         # self.time_temperature_list.append(dt.datetime.now().strftime('%H:%M:%S.%f'))
 
-        self.t_1_room_list.append(self.ardu_mega_slave.input_reg_list[7])
-        self.t_2_sample_before_radiator_list.append(self.ardu_mega_slave.input_reg_list[8])
-        self.t_3_water_before_radiator_list.append(self.ardu_mega_slave.input_reg_list[9])
-        self.t_4_fluid_after_radiator_list.append(self.ardu_mega_slave.input_reg_list[10])
-        self.t_5_recirculation_list.append(self.ardu_mega_slave.input_reg_list[11])
-        self.t_6_infuse_list.append(self.ardu_mega_slave.input_reg_list[12])
+        # Calibrated temperatures
+        self.t_1_room_list.append(self.t_1_room.temperature)
+        self.t_2_sample_before_radiator_list.append(self.t_2_sample_before_radiator.temperature)
+        self.t_3_water_before_radiator_list.append(self.t_3_water_before_radiator.temperature)
+        self.t_4_fluid_after_radiator_list.append(self.t_4_fluid_after_radiator.temperature)
+        self.t_5_recirculation_list.append(self.t_5_recirculation.temperature)
+        self.t_6_infuse_list.append(self.t_6_infuse.temperature)
+
+        # Raw temp from Ardu-Mega
+        # self.t_1_room_list.append(self.ardu_mega_slave.input_reg_list[7])
+        # self.t_2_sample_before_radiator_list.append(self.ardu_mega_slave.input_reg_list[8])
+        # self.t_3_water_before_radiator_list.append(self.ardu_mega_slave.input_reg_list[9])
+        # self.t_4_fluid_after_radiator_list.append(self.ardu_mega_slave.input_reg_list[10])
+        # self.t_5_recirculation_list.append(self.ardu_mega_slave.input_reg_list[11])
+        # self.t_6_infuse_list.append(self.ardu_mega_slave.input_reg_list[12])
         
         # limit the list to 20 elements.
         self.time_temperature_list = self.time_temperature_list[-100:]
@@ -355,14 +366,14 @@ class Temperature_stabilisation_module():
         self.ax1.plot(self.time_temperature_list, self.t_4_fluid_after_radiator_list,'k')
         self.ax1.plot(self.time_temperature_list, self.t_5_recirculation_list,'m')
         self.ax1.plot(self.time_temperature_list, self.t_6_infuse_list,'y')
-        self.ax1.legend(['room','sample before radiator','water before radiator',"fluid after radiator", "Recirculation","Infusion"])
+        self.ax1.legend(['room','sample before module','water before module',"fluid after module", "Recirculation","Infusion"])
         self.draw_canvas.draw()  
 
         self.ax1.set_title('Sample or Water')
         self.ax1.set_xlabel('Time(s)')
         self.ax1.set_ylabel('T (degC)')    
         self.ax1.legend(loc="upper right")             
-        self.ax1.set_ylim(15, 80)                
+        self.ax1.set_ylim(-10, 80)                
 
     def tsm_clear_plots(self):
         self.ax1.clear()        

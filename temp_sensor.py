@@ -5,10 +5,11 @@ import tkinter as tk
 import copy
 from element import*
 class T_sensor(Element):
-    def __init__(self, logger = None, *args, **kwargs):
+    def __init__(self, logger = None, offset = 0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = logger
-        self.temperature = 0
+        self.offset = offset
+        self.temperature = 0        
         self.gen_gui()
 
     def gen_gui(self):
@@ -25,7 +26,13 @@ class T_sensor(Element):
   
     # Get a float value and update the gui.
     def update_temp(self, value):
-        self.temperature = value
+        if value == -10:
+            self.gui_dict['temperature'].config(fg = "red")
+        else:
+            self.gui_dict['temperature'].config(fg = self.fg_color)
+
+
+        self.temperature = value + self.offset
         self.gui_dict['temperature'].config(text = str( round(value,2) ) + " degC")
         self.logger.info(self.name + " " + str(self.temperature))
         

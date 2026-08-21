@@ -325,6 +325,9 @@ void get_temperatures()
         Serial.println("Sensor 1: FAULT: thermocouple is short-circuited to GND.");
       if (e & MAX31855_FAULT_SHORT_VCC)
         Serial.println("Sensor 1: FAULT: thermocouple is short-circuited to VCC.");
+
+      //Serial.print("Sensor 1 ");
+      array_input_registers[7] = -100;  // To indicate to master that its an error.
     }
     else
     {
@@ -333,6 +336,7 @@ void get_temperatures()
       Serial.print(c_1);
       Serial.print(","); // separator for serial plotter
     }
+    delay(100);
 
     // SENSOR 2
     c_2 = thermocouple_2.readCelsius();
@@ -346,6 +350,9 @@ void get_temperatures()
         Serial.println("Sensor 2: FAULT: thermocouple is short-circuited to GND.");
       if (e & MAX31855_FAULT_SHORT_VCC)
         Serial.println("Sensor 2: FAULT: thermocouple is short-circuited to VCC.");
+
+      //Serial.print("Sensor 2 ");
+      array_input_registers[8] = -100;  // To indicate to master that its an error.
     }
     else
     {
@@ -354,6 +361,7 @@ void get_temperatures()
       Serial.print(c_2);
       Serial.print(","); // separator for serial plotter
     }
+    delay(100);
 
     // SENSOR 3
     c_3 = thermocouple_3.readCelsius();
@@ -367,6 +375,9 @@ void get_temperatures()
         Serial.println("Sensor 3: FAULT: thermocouple is short-circuited to GND.");
       if (e & MAX31855_FAULT_SHORT_VCC)
         Serial.println("Sensor 3: FAULT: thermocouple is short-circuited to VCC.");
+
+      //Serial.print("Sensor 3 ");
+      array_input_registers[9] = -100;
     }
     else
     {
@@ -375,6 +386,7 @@ void get_temperatures()
       Serial.print(c_3);
       Serial.print(","); // separator for serial plotter
     }
+    delay(100);
 
     // SENSOR 4
     c_4 = thermocouple_4.readCelsius();
@@ -388,6 +400,9 @@ void get_temperatures()
         Serial.println("Sensor 4: FAULT: thermocouple is short-circuited to GND.");
       if (e & MAX31855_FAULT_SHORT_VCC)
         Serial.println("Sensor 4: FAULT: thermocouple is short-circuited to VCC.");
+
+      //Serial.print("Sensor 4 ");
+      array_input_registers[10] = -100;
     }
     else
     {
@@ -396,6 +411,7 @@ void get_temperatures()
       Serial.print(c_4);
       Serial.print(","); // separator for serial plotter
     }
+    delay(100);
 
     // SENSOR 5
     c_5 = thermocouple_5.readCelsius();
@@ -409,6 +425,9 @@ void get_temperatures()
         Serial.println("Sensor 5: FAULT: thermocouple is short-circuited to GND.");
       if (e & MAX31855_FAULT_SHORT_VCC)
         Serial.println("Sensor 5: FAULT: thermocouple is short-circuited to VCC.");
+
+      //Serial.print("Sensor 5 ");
+      array_input_registers[11] = -100;        
     }
     else
     {
@@ -417,6 +436,7 @@ void get_temperatures()
       Serial.print(c_5);
       Serial.print(","); // separator for serial plotter
     }
+    delay(100);
 
     // SENSOR 6
     c_6 = thermocouple_6.readCelsius();
@@ -430,6 +450,9 @@ void get_temperatures()
         Serial.println("Sensor 6: FAULT: thermocouple is short-circuited to GND.");
       if (e & MAX31855_FAULT_SHORT_VCC)
         Serial.println("Sensor 6: FAULT: thermocouple is short-circuited to VCC.");
+
+      //Serial.print("Sensor 6 ");
+      array_input_registers[12] = -100;        
     }
     else
     {
@@ -438,6 +461,7 @@ void get_temperatures()
       Serial.println(c_6);
       //    Serial.print(",");    // separator for serial plotter
     }
+    delay(100);
   }
 }
 

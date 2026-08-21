@@ -37,7 +37,7 @@ if __name__ == "__main__":
     # Create the root window
     root_window = Tk()   
     root_window.title('DigiFoods - Inline Sensing')       # Set window title    
-    window_width = 1750
+    window_width = 1800
     window_height = 1000
     root_window.geometry(str(window_width) + "x" + str(window_height))     # Set window size width x height   1600x1000
     # root_window.geometry("1600x1000")     # Set window size width x height   
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                                 slaves_mcfg = slaves_mcfg,
                                 color="white", 
                                 canvas_height=500, 
-                                canvas_width=850,
+                                canvas_width=830,
                                 logger=logger)
     slave_3.gen_slave_modbus_gui()
     
